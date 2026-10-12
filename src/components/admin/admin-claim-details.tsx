@@ -25,13 +25,15 @@ export function AdminClaimDetails({
       <div className="admin-modal-content">
         <div className="admin-linked-item">
           <div className="admin-linked-image">
-            <Image
-              alt={`${item.name} original item image`}
-              fill
-              sizes="52px"
-              src={item.image}
-              unoptimized
-            />
+            {item.image && (
+              <Image
+                alt={`${item.name} original item image`}
+                fill
+                sizes="52px"
+                src={item.image}
+                unoptimized
+              />
+            )}
           </div>
           <div className="admin-linked-copy">
             <small>CLAIM FOR FOUND ITEM</small>

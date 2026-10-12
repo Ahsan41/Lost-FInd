@@ -20,13 +20,15 @@ export function AdminItemDetails({
     <Modal onClose={onClose} title={`${item.name} report details`}>
       <div className="admin-modal-content">
         <div className="admin-item-detail-media">
-          <Image
-            alt={`${item.name} original image for admin review`}
-            fill
-            sizes="(max-width: 620px) 100vw, 560px"
-            src={item.image}
-            unoptimized
-          />
+          {item.image ? (
+            <Image
+              alt={`${item.name} original image for admin review`}
+              fill
+              sizes="(max-width: 620px) 100vw, 560px"
+              src={item.image}
+              unoptimized
+            />
+          ) : <span className="admin-no-image">No image provided</span>}
         </div>
         <div className="admin-detail-heading">
           <div>

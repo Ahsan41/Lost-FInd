@@ -1,22 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import type { FoundItem } from "@/types/item";
 import { isValidEmail, isValidPhone } from "@/lib/format";
+import {
+  getApiFieldErrors,
+  getPublicApiErrorMessage,
+  publicApi,
+  type ClaimInput,
+} from "@/lib/public-api";
 import { Icon } from "@/components/ui/icon";
 import { Field } from "@/components/ui/field";
 import { ImageUploader } from "@/components/ui/image-uploader";
 
-interface ClaimValues {
-  name: string;
-  email: string;
-  phone: string;
-  description: string;
-  proof: string;
-}
-
-type ClaimErrors = Partial<Record<keyof ClaimValues, string>>;
+type ClaimValues = ClaimInput;
+const claimFields = ["name", "email", "phone", "description", "proof"] as const satisfies readonly (keyof ClaimValues)[];
+type ClaimErrors = Partial<Record<(typeof claimFields)[number], string>>;
 
 interface ClaimItemFormProps {
   item: FoundItem;
@@ -48,21 +48,33 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
   const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const submittingRef = useRef(false);
 
   function update<K extends keyof ClaimValues>(key: K, value: ClaimValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
+    setSubmitError("");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     const nextErrors = validate(values);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
+    submittingRef.current = true;
     setSubmitting(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 700));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      await publicApi.submitClaim(item.id, values, image);
+      setSubmitted(true);
+    } catch (error) {
+      setErrors(getApiFieldErrors(error, claimFields));
+      setSubmitError(getPublicApiErrorMessage(error));
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -70,8 +82,8 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
       <div className="modal-content">
         <div className="success-state">
           <span className="success-icon"><Icon name="check-circle" /></span>
-          <h3>Claim request ready</h3>
-          <p>Your claim for <strong>{item.name}</strong> was submitted in this demo for review. No information was sent or saved.</p>
+          <h3>Claim request sent</h3>
+          <p>Your claim for <strong>{item.name}</strong> was sent for review. We’ll contact you using the details you provided.</p>
           <button className="button button-primary" onClick={onDone} type="button">Done</button>
         </div>
       </div>
@@ -87,7 +99,7 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
       </div>
       <div className="claim-item-summary">
         <div className="claim-thumb-wrap">
-          <Image alt="" className="claim-thumb" fill sizes="54px" src={item.image} unoptimized />
+          {item.image && <Image alt="" className="claim-thumb" fill sizes="54px" src={item.image} unoptimized />}
         </div>
         <div className="claim-item-summary-copy">
           <strong>{item.name}</strong>
@@ -95,6 +107,7 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
         </div>
       </div>
       <form className="form-stack" noValidate onSubmit={handleSubmit}>
+        {submitError && <p className="form-error" role="alert">{submitError}</p>}
         <div className="form-grid">
           <Field error={errors.name} htmlFor="claim-name" label="Your full name" required>
             <input aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "claim-name-error" : undefined} autoComplete="name" className="field-input" id="claim-name" onChange={(event) => update("name", event.target.value)} placeholder="Full name" value={values.name} />

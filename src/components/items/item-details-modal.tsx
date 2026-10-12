@@ -21,14 +21,16 @@ export function ItemDetailsModal({
     <Modal onClose={onClose} title={`${item.name} details`} wide>
       <div className="details-layout">
         <div className="details-image-wrap">
-          <Image
-            alt={item.name}
-            className="details-image"
-            fill
-            sizes="(max-width: 840px) 100vw, 45vw"
-            src={item.image}
-            unoptimized
-          />
+          {item.image && (
+            <Image
+              alt={item.name}
+              className="details-image"
+              fill
+              sizes="(max-width: 840px) 100vw, 45vw"
+              src={item.image}
+              unoptimized
+            />
+          )}
           <span className="item-status">
             <span className="item-status-dot" />
             {item.status}

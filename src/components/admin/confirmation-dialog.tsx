@@ -8,8 +8,9 @@ interface ConfirmationDialogProps {
   description: string;
   confirmLabel: string;
   danger?: boolean;
+  pending?: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }
 
 export function ConfirmationDialog({
@@ -17,6 +18,7 @@ export function ConfirmationDialog({
   description,
   confirmLabel,
   danger = false,
+  pending = false,
   onCancel,
   onConfirm,
 }: ConfirmationDialogProps) {
@@ -29,8 +31,10 @@ export function ConfirmationDialog({
         <h2 className="admin-modal-title">{title}</h2>
         <p className="admin-modal-description">{description}</p>
         <div className="admin-modal-actions">
-          <button className="button button-secondary" onClick={onCancel} type="button">Cancel</button>
-          <button className={`button ${danger ? "button-danger" : "button-primary"}`} onClick={onConfirm} type="button">{confirmLabel}</button>
+          <button className="button button-secondary" disabled={pending} onClick={onCancel} type="button">Cancel</button>
+          <button aria-busy={pending} className={`button ${danger ? "button-danger" : "button-primary"}`} disabled={pending} onClick={onConfirm} type="button">
+            {pending ? "Saving…" : confirmLabel}
+          </button>
         </div>
       </div>
     </Modal>

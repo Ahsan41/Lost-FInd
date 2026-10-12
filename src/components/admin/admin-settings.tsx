@@ -24,7 +24,7 @@ export function AdminSettings() {
       <div className="admin-page-intro">
         <div>
           <h2>Workspace settings</h2>
-          <p>Adjust the local prototype preferences. There is no account or persistent storage connected.</p>
+          <p>Adjust notification preferences for this local preview. Admin account and report data are managed by the LostNFind API.</p>
         </div>
       </div>
       {notice && <AdminNotice message={notice} onDismiss={() => setNotice("")} />}

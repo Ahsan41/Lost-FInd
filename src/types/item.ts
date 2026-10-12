@@ -18,7 +18,7 @@ export interface FoundItem {
   description: string;
   location: string;
   foundDate: string;
-  image: string;
+  image: string | null;
   status: ItemStatus;
 }
 
@@ -39,7 +39,8 @@ export interface ReporterContact {
   phone: string;
 }
 
-export interface AdminFoundItem extends FoundItem {
+export interface AdminFoundItem extends Omit<FoundItem, "image"> {
+  image: string | null;
   submittedAt: string;
   reviewStatus: AdminItemStatus;
   reporter: ReporterContact;

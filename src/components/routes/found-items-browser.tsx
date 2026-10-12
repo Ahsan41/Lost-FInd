@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { foundItems } from "@/data/found-items";
+import { useEffect, useMemo, useState } from "react";
 import { itemCategories, type FoundItem } from "@/types/item";
 import { ClaimItemModal } from "@/components/forms/claim-item-modal";
 import { ItemCard } from "@/components/items/item-card";
 import { ItemDetailsModal } from "@/components/items/item-details-modal";
 import { Icon } from "@/components/ui/icon";
+import { getPublicApiErrorMessage, publicApi } from "@/lib/public-api";
 
 type SortOrder = "newest" | "oldest" | "name";
 
@@ -28,6 +28,27 @@ export function FoundItemsBrowser({
   const [sort, setSort] = useState<SortOrder>("newest");
   const [selectedItem, setSelectedItem] = useState<FoundItem | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    publicApi.listFoundItems().then(
+      (items) => {
+        if (active) setFoundItems(items);
+      },
+      (error: unknown) => {
+        if (active) setLoadError(getPublicApiErrorMessage(error));
+      },
+    ).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [retryCount]);
 
   const items = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -43,7 +64,13 @@ export function FoundItemsBrowser({
       const dateDelta = new Date(second.foundDate).getTime() - new Date(first.foundDate).getTime();
       return sort === "newest" ? dateDelta : -dateDelta;
     });
-  }, [category, query, sort]);
+  }, [category, foundItems, query, sort]);
+
+  function retryLoading() {
+    setLoading(true);
+    setLoadError("");
+    setRetryCount((count) => count + 1);
+  }
 
   function finishClaim() {
     setClaiming(false);
@@ -88,9 +115,19 @@ export function FoundItemsBrowser({
           ))}
         </div>
         <p aria-live="polite" className="result-count">
-          {items.length} {items.length === 1 ? "item" : "items"} {category !== "All items" ? `in ${category}` : "waiting to be found"}
+          {loading ? "Loading found items…" : `${items.length} ${items.length === 1 ? "item" : "items"} ${category !== "All items" ? `in ${category}` : "waiting to be found"}`}
         </p>
-        {items.length ? (
+        {loadError ? (
+          <div className="empty-state" role="alert">
+            <h3>Could not load found items</h3>
+            <p>{loadError}</p>
+            <button className="button button-secondary button-small" onClick={retryLoading} type="button">Try again</button>
+          </div>
+        ) : loading ? (
+          <div aria-label="Loading found items" className="empty-state" role="status">
+            <p>Loading approved community reports…</p>
+          </div>
+        ) : items.length ? (
           <div className="items-grid">
             {items.map((item) => <ItemCard item={item} key={item.id} onSelect={setSelectedItem} />)}
           </div>

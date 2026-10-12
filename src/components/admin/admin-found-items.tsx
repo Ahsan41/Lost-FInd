@@ -21,6 +21,7 @@ function FoundItemsManager() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
   const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const selectedItem = foundItems.find((item) => item.id === selectedItemId) ?? null;
   const filteredItems = useMemo(() => {
@@ -41,16 +42,20 @@ function FoundItemsManager() {
     setPendingChange({ item, status: nextStatus });
   }
 
-  function confirmChange() {
+  async function confirmChange() {
     if (!pendingChange) return;
     const { item, status: nextStatus } = pendingChange;
-    if (nextStatus === "Returned") {
-      markItemReturned(item.id);
-    } else {
-      setItemStatus(item.id, nextStatus);
+    setSaving(true);
+    try {
+      const saved = nextStatus === "Returned"
+        ? await markItemReturned(item.id)
+        : await setItemStatus(item.id, nextStatus);
+      if (!saved) return;
+      setNotice(`${item.name} marked ${nextStatus.toLowerCase()}.`);
+      setPendingChange(null);
+    } finally {
+      setSaving(false);
     }
-    setNotice(`${item.name} marked ${nextStatus.toLowerCase()}. This prototype change is temporary and was not saved.`);
-    setPendingChange(null);
   }
 
   const confirmationTitle = pendingChange?.status === "Rejected"
@@ -98,7 +103,7 @@ function FoundItemsManager() {
       </div>
       <section aria-label="Found item reports" className="admin-panel">
         <div className="admin-panel-header">
-          <div><h3>All reports</h3><p>{filteredItems.length} {filteredItems.length === 1 ? "result" : "results"} · mock data for this session</p></div>
+          <div><h3>All reports</h3><p>{filteredItems.length} {filteredItems.length === 1 ? "result" : "results"} from the LostNFind API</p></div>
         </div>
         {filteredItems.length ? (
           <div className="admin-table-wrap">
@@ -111,7 +116,7 @@ function FoundItemsManager() {
                   <tr key={item.id}>
                     <td>
                       <div className="admin-table-primary">
-                        <span className="admin-item-thumb"><Image alt="" fill sizes="38px" src={item.image} unoptimized /></span>
+                        <span className="admin-item-thumb">{item.image && <Image alt="" fill sizes="38px" src={item.image} unoptimized />}</span>
                         <span><strong>{item.name}</strong><small>Reported by {item.reporter.name}</small></span>
                       </div>
                     </td>
@@ -161,9 +166,10 @@ function FoundItemsManager() {
         <ConfirmationDialog
           danger={pendingChange.status === "Rejected"}
           confirmLabel={`${pendingChange.status === "Rejected" ? "Reject" : pendingChange.status === "Returned" ? "Mark returned" : "Approve"} report`}
-          description={`Are you sure you want to ${confirmationVerb} “${pendingChange.item.name}”? This will only update the current prototype session.`}
+          description={`Are you sure you want to ${confirmationVerb} “${pendingChange.item.name}”?`}
           onCancel={() => setPendingChange(null)}
           onConfirm={confirmChange}
+          pending={saving}
           title={confirmationTitle}
         />
       )}

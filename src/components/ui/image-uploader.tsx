@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/icon";
+import { MAX_IMAGE_BYTES } from "@/lib/public-api";
+
+const acceptedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
 interface ImageUploaderProps {
   file: File | null;
@@ -29,11 +32,13 @@ export function ImageUploader({
   function selectFile(selected: File | undefined) {
     setError("");
     if (!selected) return;
-    if (!selected.type.startsWith("image/")) {
+    if (!acceptedImageTypes.includes(selected.type)) {
+      clearFile();
       setError("Choose an image file to continue.");
       return;
     }
-    if (selected.size > 8 * 1024 * 1024) {
+    if (selected.size > MAX_IMAGE_BYTES) {
+      clearFile();
       setError("Images must be smaller than 8 MB.");
       return;
     }
@@ -42,6 +47,13 @@ export function ImageUploader({
     previewUrlRef.current = objectUrl;
     setPreview(objectUrl);
     onChange(selected);
+  }
+
+  function clearFile() {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPreview(null);
+    onChange(null);
   }
 
   function openPicker() {
@@ -58,7 +70,7 @@ export function ImageUploader({
         <input
           ref={inputRef}
           aria-label={label}
-          accept="image/*"
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
           className="sr-only"
           onChange={(event) => selectFile(event.currentTarget.files?.[0])}
           type="file"
@@ -84,10 +96,7 @@ export function ImageUploader({
               <button
                 className="button button-secondary button-small"
                 onClick={() => {
-                  if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-                  previewUrlRef.current = null;
-                  setPreview(null);
-                  onChange(null);
+                  clearFile();
                   if (inputRef.current) inputRef.current.value = "";
                 }}
                 type="button"

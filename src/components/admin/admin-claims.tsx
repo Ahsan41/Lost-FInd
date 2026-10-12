@@ -25,6 +25,7 @@ export function AdminClaims() {
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const selectedClaim = claims.find((claim) => claim.id === selectedClaimId) ?? null;
   const selectedItem = selectedClaim
@@ -55,16 +56,21 @@ export function AdminClaims() {
     setPendingAction({ type: "return", claim, itemName: item.name });
   }
 
-  function confirmAction() {
+  async function confirmAction() {
     if (!pendingAction) return;
-    if (pendingAction.type === "claim") {
-      setClaimStatus(pendingAction.claim.id, pendingAction.status);
-      setNotice(`Claim for ${pendingAction.claim.claimant.name} marked ${pendingAction.status.toLowerCase()}. This prototype change is temporary and was not saved.`);
-    } else {
-      markItemReturned(pendingAction.claim.itemId);
-      setNotice(`${pendingAction.itemName} marked returned. The change is temporary and was not saved.`);
+    setSaving(true);
+    try {
+      const saved = pendingAction.type === "claim"
+        ? await setClaimStatus(pendingAction.claim.id, pendingAction.status)
+        : await markItemReturned(pendingAction.claim.itemId);
+      if (!saved) return;
+      setNotice(pendingAction.type === "claim"
+        ? `Claim for ${pendingAction.claim.claimant.name} marked ${pendingAction.status.toLowerCase()}.`
+        : `${pendingAction.itemName} marked returned.`);
+      setPendingAction(null);
+    } finally {
+      setSaving(false);
     }
-    setPendingAction(null);
   }
 
   const confirmationTitle = pendingAction?.type === "return"
@@ -74,7 +80,7 @@ export function AdminClaims() {
       : "Approve this claim?";
   const confirmationDescription = pendingAction?.type === "return"
     ? `Confirm that “${pendingAction.itemName}” has been returned to its owner.`
-    : `Are you sure you want to ${pendingAction?.status === "Rejected" ? "reject" : "approve"} the claim from ${pendingAction?.claim.claimant.name}? This only changes the current prototype session.`;
+    : `Are you sure you want to ${pendingAction?.status === "Rejected" ? "reject" : "approve"} the claim from ${pendingAction?.claim.claimant.name}?`;
   const confirmationLabel = pendingAction?.type === "return"
     ? "Mark item returned"
     : pendingAction?.status === "Rejected"
@@ -112,7 +118,7 @@ export function AdminClaims() {
       </div>
       <section aria-label="Claim requests" className="admin-panel">
         <div className="admin-panel-header">
-          <div><h3>All claims</h3><p>{filteredClaims.length} {filteredClaims.length === 1 ? "request" : "requests"} · local mock data</p></div>
+          <div><h3>All claims</h3><p>{filteredClaims.length} {filteredClaims.length === 1 ? "request" : "requests"} from the LostNFind API</p></div>
         </div>
         {filteredClaims.length ? (
           <div className="admin-table-wrap">
@@ -132,7 +138,7 @@ export function AdminClaims() {
                       <td>
                         {item ? (
                           <div className="admin-table-primary">
-                            <span className="admin-item-thumb"><Image alt="" fill sizes="38px" src={item.image} unoptimized /></span>
+                            <span className="admin-item-thumb">{item.image && <Image alt="" fill sizes="38px" src={item.image} unoptimized />}</span>
                             <span><strong>{item.name}</strong><small>{item.category} · {item.location}</small></span>
                           </div>
                         ) : <span>Item no longer listed</span>}
@@ -180,6 +186,7 @@ export function AdminClaims() {
           description={confirmationDescription}
           onCancel={() => setPendingAction(null)}
           onConfirm={confirmAction}
+          pending={saving}
           title={confirmationTitle}
         />
       )}

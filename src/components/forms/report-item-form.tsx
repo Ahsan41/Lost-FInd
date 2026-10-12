@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { itemCategories } from "@/types/item";
 import { isValidEmail, isValidPhone } from "@/lib/format";
+import {
+  getApiFieldErrors,
+  getPublicApiErrorMessage,
+  publicApi,
+  type ReportItemInput,
+} from "@/lib/public-api";
 import { Icon } from "@/components/ui/icon";
 import { Field } from "@/components/ui/field";
 import { ImageUploader } from "@/components/ui/image-uploader";
@@ -20,6 +26,18 @@ interface ReportValues {
 }
 
 type ReportErrors = Partial<Record<keyof ReportValues, string>>;
+
+const reportFields = [
+  "name",
+  "category",
+  "description",
+  "location",
+  "foundDate",
+  "reporterName",
+  "email",
+  "phone",
+  "whatsapp",
+] as const satisfies readonly (keyof ReportValues)[];
 
 const emptyValues: ReportValues = {
   name: "",
@@ -41,7 +59,9 @@ interface ReportItemFormProps {
 function validate(values: ReportValues): ReportErrors {
   const errors: ReportErrors = {};
   if (!values.name.trim()) errors.name = "Add a name for the item.";
-  if (!values.category) errors.category = "Choose a category.";
+  if (!itemCategories.some((category) => category === values.category)) {
+    errors.category = "Choose a category.";
+  }
   if (!values.description.trim()) errors.description = "Add a few identifying details.";
   if (!values.location.trim()) errors.location = "Add where it was found.";
   if (!values.foundDate) errors.foundDate = "Choose the date it was found.";
@@ -65,22 +85,37 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
   const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const submittingRef = useRef(false);
 
   function update<K extends keyof ReportValues>(key: K, value: ReportValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
+    setSubmitError("");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     const nextErrors = validate(values);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
+    const category = itemCategories.find((itemCategory) => itemCategory === values.category);
+    if (!category) return;
+
+    submittingRef.current = true;
     setSubmitting(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 700));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      await publicApi.submitFoundItem({ ...values, category } satisfies ReportItemInput, image);
+      setSubmitted(true);
+    } catch (error) {
+      setErrors(getApiFieldErrors(error, reportFields));
+      setSubmitError(getPublicApiErrorMessage(error));
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -89,7 +124,7 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
         <div className="success-state">
           <span className="success-icon"><Icon name="check-circle" /></span>
           <h3>Thanks for looking out</h3>
-          <p>Your report has been prepared in this demo. Nothing has been sent or saved, but you helped show how a real report would work.</p>
+          <p>Your report has been sent for review. It will appear in the public listings after an administrator approves it.</p>
           <button className="button button-primary" onClick={onDone} type="button">Done</button>
         </div>
       </div>
@@ -104,6 +139,7 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
         <p className="modal-description">Share a few details so its owner can recognize it. Your contact details won’t appear publicly.</p>
       </div>
       <form className="form-stack" noValidate onSubmit={handleSubmit}>
+        {submitError && <p className="form-error" role="alert">{submitError}</p>}
         <div className="form-grid">
           <Field error={errors.name} htmlFor="report-name" label="Item name" required>
             <input aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "report-name-error" : undefined} autoComplete="off" className="field-input" id="report-name" onChange={(event) => update("name", event.target.value)} placeholder="e.g. Blue water bottle" value={values.name} />
@@ -147,7 +183,7 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
         <div className="form-actions">
           <button className="button button-secondary" onClick={onCancel} type="button">Cancel</button>
           <button className="button button-primary" disabled={submitting} type="submit">
-            {submitting ? <><span className="loading-indicator" />Preparing report…</> : <>Continue <Icon name="arrow-right" /></>}
+            {submitting ? <><span className="loading-indicator" />Sending report…</> : <>Continue <Icon name="arrow-right" /></>}
           </button>
         </div>
       </form>

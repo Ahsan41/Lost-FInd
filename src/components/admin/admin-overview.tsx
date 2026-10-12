@@ -2,27 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo } from "react";
 import { useAdminData } from "@/components/admin/admin-data-provider";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { formatDate } from "@/lib/format";
 
 export function AdminOverview() {
-  const { foundItems, claims } = useAdminData();
-  const recentItems = useMemo(
-    () => [...foundItems].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)).slice(0, 4),
-    [foundItems],
-  );
-  const recentClaims = useMemo(
-    () => [...claims].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)).slice(0, 4),
-    [claims],
-  );
+  const { overview } = useAdminData();
   const stats: { label: string; value: number; note: string; icon: IconName; mint?: boolean }[] = [
-    { label: "Total Found Items", value: foundItems.length, note: "Community item reports", icon: "bag" },
-    { label: "Pending Claims", value: claims.filter((claim) => claim.status === "Pending").length, note: "Awaiting a review", icon: "clock" },
-    { label: "Approved Claims", value: claims.filter((claim) => claim.status === "Approved").length, note: "Ownership confirmed", icon: "check-circle", mint: true },
-    { label: "Items Returned", value: foundItems.filter((item) => item.reviewStatus === "Returned").length, note: "Reunited with their owners", icon: "heart", mint: true },
+    { label: "Total Found Items", value: overview.totalItems, note: "Community item reports", icon: "bag" },
+    { label: "Pending Claims", value: overview.pendingClaims, note: "Awaiting a review", icon: "clock" },
+    { label: "Approved Claims", value: overview.approvedClaims, note: "Ownership confirmed", icon: "check-circle", mint: true },
+    { label: "Items Returned", value: overview.itemsReturned, note: "Reunited with their owners", icon: "heart", mint: true },
   ];
 
   return (
@@ -57,16 +48,16 @@ export function AdminOverview() {
             <div><h3 id="recent-reports-title">Recent found-item reports</h3><p>Latest community submissions</p></div>
             <Link className="admin-panel-link" href="/admin/found-items">All reports <Icon name="arrow-right" /></Link>
           </div>
-          {recentItems.length ? (
+          {overview.recentItems.length ? (
             <div className="admin-table-wrap">
               <table className="admin-table admin-compact-table">
                 <thead><tr><th>Item</th><th>Submitted</th><th>Status</th></tr></thead>
                 <tbody>
-                  {recentItems.map((item) => (
+                  {overview.recentItems.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div className="admin-table-primary">
-                          <span className="admin-item-thumb"><Image alt="" fill sizes="38px" src={item.image} unoptimized /></span>
+                          <span className="admin-item-thumb">{item.image && <Image alt="" fill sizes="38px" src={item.image} unoptimized />}</span>
                           <span><strong>{item.name}</strong><small>{item.category}</small></span>
                         </div>
                       </td>
@@ -85,21 +76,18 @@ export function AdminOverview() {
             <div><h3 id="recent-claims-title">Recent claim requests</h3><p>People looking for their belongings</p></div>
             <Link className="admin-panel-link" href="/admin/claims">All claims <Icon name="arrow-right" /></Link>
           </div>
-          {recentClaims.length ? (
+          {overview.recentClaims.length ? (
             <div className="admin-table-wrap">
               <table className="admin-table admin-compact-table">
                 <thead><tr><th>Claimant</th><th>Found item</th><th>Status</th></tr></thead>
                 <tbody>
-                  {recentClaims.map((claim) => {
-                    const item = foundItems.find((candidate) => candidate.id === claim.itemId);
-                    return (
-                      <tr key={claim.id}>
-                        <td><div className="admin-table-primary"><span><strong>{claim.claimant.name}</strong><small>{formatDate(claim.submittedAt)}</small></span></div></td>
-                        <td>{item?.name ?? "Item no longer listed"}</td>
-                        <td><StatusBadge status={claim.status} /></td>
-                      </tr>
-                    );
-                  })}
+                  {overview.recentClaims.map((claim) => (
+                    <tr key={claim.id}>
+                      <td><div className="admin-table-primary"><span><strong>{claim.claimant.name}</strong><small>{formatDate(claim.submittedAt)}</small></span></div></td>
+                      <td>{claim.item.name}</td>
+                      <td><StatusBadge status={claim.status} /></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

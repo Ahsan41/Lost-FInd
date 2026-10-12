@@ -17,14 +17,18 @@ export function ItemCard({ item, onSelect }: ItemCardProps) {
       type="button"
     >
       <div className="item-image-wrap">
-        <Image
-          alt={item.name}
-          className="item-image"
-          fill
-          sizes="(max-width: 620px) 100vw, (max-width: 840px) 50vw, 33vw"
-          src={item.image}
-          unoptimized
-        />
+        {item.image ? (
+          <Image
+            alt={item.name}
+            className="item-image"
+            fill
+            sizes="(max-width: 620px) 100vw, (max-width: 840px) 50vw, 33vw"
+            src={item.image}
+            unoptimized
+          />
+        ) : (
+          <span className="item-image-placeholder"><Icon name="image" /></span>
+        )}
         <span className="item-status">
           <span className="item-status-dot" />
           {item.status}

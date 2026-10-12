@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useAdminAuth } from "@/components/admin/admin-auth-gate";
 import { useAdminData } from "@/components/admin/admin-data-provider";
 import { Icon } from "@/components/ui/icon";
 
@@ -25,7 +26,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
-  const { claims } = useAdminData();
+  const { claims, error, dismissError } = useAdminData();
+  const { user, signOut } = useAdminAuth();
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -121,8 +123,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="admin-sidebar-bottom">
           <div className="admin-prototype-card">
             <span className="admin-prototype-icon"><Icon name="shield" /></span>
-            <strong>Prototype workspace</strong>
-            <p>Changes stay in this browser session and are not saved.</p>
+            <strong>Protected workspace</strong>
+            <p>Admin access is verified by the LostNFind API.</p>
           </div>
           <Link className="admin-back-link" href="/"><Icon name="arrow-left" />Back to public site</Link>
         </div>
@@ -146,11 +148,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="admin-header-actions">
-            <span className="admin-prototype-pill"><span />Frontend prototype</span>
-            <button aria-label="Admin profile placeholder" className="admin-avatar" title="Admin profile placeholder" type="button">AD</button>
+            <span className="admin-user-email" title={user.email}>{user.email}</span>
+            <button className="button button-secondary button-small" onClick={() => void signOut()} type="button">Sign out</button>
           </div>
         </header>
-        <main className="admin-content">{children}</main>
+        <main className="admin-content">
+          {error && (
+            <div className="admin-api-error" role="alert">
+              <span>{error}</span>
+              <button onClick={dismissError} type="button">Dismiss</button>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

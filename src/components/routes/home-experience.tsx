@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { foundItems } from "@/data/found-items";
+import { useEffect, useState } from "react";
 import type { FoundItem, ItemCategory } from "@/types/item";
 import { useReportDialog } from "@/components/app-shell";
 import { ClaimItemModal } from "@/components/forms/claim-item-modal";
 import { ItemCard } from "@/components/items/item-card";
 import { ItemDetailsModal } from "@/components/items/item-details-modal";
 import { Icon, type IconName } from "@/components/ui/icon";
+import { getPublicApiErrorMessage, publicApi } from "@/lib/public-api";
 
 const categoryShortcuts: { label: ItemCategory; icon: IconName }[] = [
   { label: "Electronics", icon: "camera" },
@@ -21,7 +21,35 @@ export function HomeExperience() {
   const openReport = useReportDialog();
   const [selectedItem, setSelectedItem] = useState<FoundItem | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    publicApi.listFoundItems().then(
+      (items) => {
+        if (active) setFoundItems(items);
+      },
+      (error: unknown) => {
+        if (active) setLoadError(getPublicApiErrorMessage(error));
+      },
+    ).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [retryCount]);
+
   const recentItems = foundItems.slice(0, 3);
+
+  function retryLoading() {
+    setLoading(true);
+    setLoadError("");
+    setRetryCount((count) => count + 1);
+  }
 
   function finishClaim() {
     setClaiming(false);
@@ -86,9 +114,22 @@ export function HomeExperience() {
           </div>
           <Link className="button button-primary home-view-all" href="/found-items">View all items <Icon name="arrow-right" /></Link>
         </div>
-        <div className="items-grid">
-          {recentItems.map((item) => <ItemCard item={item} key={item.id} onSelect={setSelectedItem} />)}
-        </div>
+        {loadError ? (
+          <div className="empty-state" role="alert">
+            <p>{loadError}</p>
+            <button className="button button-secondary button-small" onClick={retryLoading} type="button">Try again</button>
+          </div>
+        ) : loading ? (
+          <div aria-label="Loading recent items" className="empty-state" role="status">
+            <p>Loading recent community reports…</p>
+          </div>
+        ) : recentItems.length ? (
+          <div className="items-grid">
+            {recentItems.map((item) => <ItemCard item={item} key={item.id} onSelect={setSelectedItem} />)}
+          </div>
+        ) : (
+          <div className="empty-state"><p>No approved found items yet.</p></div>
+        )}
       </section>
 
       {selectedItem && (
