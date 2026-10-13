@@ -62,6 +62,8 @@ function isAllowedRequest(path: string[], method: string): boolean {
   if (/^items\/[A-Za-z0-9_-]+$/.test(route) || /^claims\/[A-Za-z0-9_-]+$/.test(route)) {
     return method === "GET";
   }
+  // Claim evidence lives in a private bucket; the backend only serves it with the admin token.
+  if (/^files\/claims\/[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/.test(route)) return method === "GET";
   if (/^items\/[A-Za-z0-9_-]+\/status$/.test(route) || /^claims\/[A-Za-z0-9_-]+\/status$/.test(route)) {
     return method === "PATCH";
   }
@@ -210,6 +212,7 @@ async function handle(request: Request, { params }: RouteParams): Promise<Respon
     );
   }
 
+  if (route.startsWith("files/")) return forward(request, route, token);
   return forward(request, `admin/${route}`, token);
 }
 

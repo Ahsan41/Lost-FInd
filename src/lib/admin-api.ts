@@ -86,6 +86,21 @@ async function requestData<T>(path: string, init?: RequestInit): Promise<T> {
   return (body as ApiEnvelope<T>).data;
 }
 
+/**
+ * Claim evidence is served by the backend only with the admin token, which the
+ * browser never holds. Point the image at the admin proxy instead, which adds it.
+ */
+function proxiedClaimImage(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const match = /\/api\/files\/claims\/([A-Za-z0-9][A-Za-z0-9._-]*)$/.exec(url);
+  return match ? `/api/admin/files/claims/${match[1]}` : url;
+}
+
+function withProxiedImage(claim: AdminClaim): AdminClaim {
+  const supportingImage = proxiedClaimImage(claim.supportingImage);
+  return supportingImage ? { ...claim, supportingImage } : claim;
+}
+
 export function getAdminErrorMessage(error: unknown): string {
   if (error instanceof AdminApiError) return error.message;
   if (error instanceof TypeError) return "Could not connect to the admin service. Try again.";
@@ -109,7 +124,7 @@ export const adminApi = {
     return requestData<AdminFoundItem[]>("items");
   },
   listClaims() {
-    return requestData<AdminClaim[]>("claims");
+    return requestData<AdminClaim[]>("claims").then((claims) => claims.map(withProxiedImage));
   },
   overview() {
     return requestData<AdminOverviewData>("stats");
@@ -129,6 +144,6 @@ export const adminApi = {
     return requestData<AdminClaim>(`claims/${encodeURIComponent(claimId)}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
-    });
+    }).then(withProxiedImage);
   },
 };
