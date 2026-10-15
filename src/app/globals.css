@@ -878,6 +878,7 @@ select.field-input {
 
 .entry-media img {
   object-fit: cover;
+  filter: blur(99px);
 }
 
 .item-image-placeholder {
