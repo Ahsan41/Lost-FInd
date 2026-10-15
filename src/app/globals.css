@@ -850,7 +850,8 @@ select.field-input {
 
 .entry-media img {
   object-fit: cover;
-  filter: blur(99px);
+  filter: blur(12px);
+  transform: scale(1.08);
 }
 
 .item-image-placeholder {
@@ -1408,7 +1409,8 @@ select.field-input {
 
 .claim-subject-media img {
   object-fit: cover;
-  filter: blur(99px);
+  filter: blur(12px);
+  transform: scale(1.08);
 }
 
 .claim-subject-copy {
@@ -1456,7 +1458,8 @@ select.field-input {
 
 .record-media img {
   object-fit: cover;
-  filter: blur(99px);
+  filter: blur(12px);
+  transform: scale(1.08);
 }
 
 .record-body {
