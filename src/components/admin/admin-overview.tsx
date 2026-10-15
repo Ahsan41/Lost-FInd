@@ -69,8 +69,8 @@ export function AdminOverview() {
                           <span><strong>{item.name}</strong><small>{item.category}</small></span>
                         </div>
                       </td>
-                      <td className="table-date">{formatDate(item.submittedAt)}</td>
-                      <td><StatusTag status={item.reviewStatus} /></td>
+                      <td className="table-date" data-label="Submitted">{formatDate(item.submittedAt)}</td>
+                      <td className="table-cell-status"><StatusTag status={item.reviewStatus} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -104,8 +104,8 @@ export function AdminOverview() {
                           <span><strong>{claim.claimant.name}</strong><small>{formatDate(claim.submittedAt)}</small></span>
                         </div>
                       </td>
-                      <td>{claim.item.name}</td>
-                      <td><StatusTag status={claim.status} /></td>
+                      <td data-label="Found item">{claim.item.name}</td>
+                      <td className="table-cell-status"><StatusTag status={claim.status} /></td>
                     </tr>
                   ))}
                 </tbody>

@@ -158,11 +158,11 @@ export function AdminFoundItems() {
                         <span><strong>{item.name}</strong><small>Reported by {item.reporter.name}</small></span>
                       </div>
                     </td>
-                    <td>{item.category}</td>
-                    <td>{item.location}</td>
-                    <td className="table-date">{formatDate(item.submittedAt)}</td>
-                    <td><StatusTag status={item.reviewStatus} /></td>
-                    <td>
+                    <td data-label="Category">{item.category}</td>
+                    <td data-label="Found location">{item.location}</td>
+                    <td className="table-date" data-label="Submitted">{formatDate(item.submittedAt)}</td>
+                    <td className="table-cell-status"><StatusTag status={item.reviewStatus} /></td>
+                    <td className="table-cell-actions">
                       <div className="table-actions">
                         <button aria-label={`View ${item.name} details`} className="button button-secondary button-small" onClick={() => setSelectedItemId(item.id)} type="button">View</button>
                         {item.reviewStatus === "Pending review" && (

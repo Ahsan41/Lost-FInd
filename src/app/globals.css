@@ -660,27 +660,8 @@ select.field-input {
   min-width: 0;
 }
 
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-control);
-  background: var(--tag);
-  color: var(--tag-ink);
-  flex: none;
-}
 
-.brand-mark .icon {
-  width: 19px;
-  height: 19px;
-}
 
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
 
 .brand-name {
   font-family: var(--font-display);
@@ -690,15 +671,6 @@ select.field-input {
   color: var(--ink);
 }
 
-.brand-descriptor {
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  white-space: nowrap;
-}
 
 .site-nav {
   display: flex;
@@ -1001,15 +973,21 @@ select.field-input {
 
 .tile-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 18px;
 }
 
-@media (max-width: 900px) {
-  .tile-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+/* In a two-column layout, do not leave the last tile orphaned. */
+.tile-grid > :last-child:nth-child(odd):not(:first-child) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 721px) {
+  .tile-grid > :last-child:nth-child(odd):not(:first-child) {
+    grid-column: auto;
   }
 }
+
 
 @media (max-width: 560px) {
   .tile-grid {
@@ -1430,6 +1408,7 @@ select.field-input {
 
 .claim-subject-media img {
   object-fit: cover;
+  filter: blur(99px);
 }
 
 .claim-subject-copy {
@@ -1477,6 +1456,7 @@ select.field-input {
 
 .record-media img {
   object-fit: cover;
+  filter: blur(99px);
 }
 
 .record-body {
@@ -2030,5 +2010,79 @@ select.field-input {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Phone polish                                                        */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  .site-header-inner {
+    height: 60px;
+  }
+
+  .site-main {
+    padding-bottom: 48px;
+  }
+
+  .desk-title {
+    font-size: 2rem;
+  }
+
+  .desk-search-input .field-input {
+    min-height: 48px;
+    font-size: var(--text-sm);
+  }
+
+  .path {
+    padding: 22px 18px 24px;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .category-index a {
+    font-size: var(--text-base);
+  }
+
+  .record-body {
+    gap: 12px;
+  }
+
+  .record-facts > div {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+
+  .form-actions {
+    position: sticky;
+    bottom: 0;
+    margin: 0 -18px -28px;
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    background: var(--paper-raised);
+    border-top: 1px solid var(--rule);
+  }
+
+  .form-actions .button {
+    flex: 1;
+  }
+
+  .modal-close {
+    top: 10px;
+    right: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .rail-option {
+    padding: 5px 10px;
+    font-size: var(--text-xs);
+  }
+
+  .entry-row .entry-title {
+    font-size: var(--text-md);
   }
 }

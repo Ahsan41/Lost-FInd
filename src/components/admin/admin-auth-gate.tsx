@@ -153,7 +153,6 @@ function AdminLogin({
     <main className="auth-screen">
       <section aria-labelledby="admin-login-title" className="auth-card">
         <div className="auth-brand">
-          <span className="brand-mark"><Icon name="logo" /></span>
           <span className="brand-name">LostNFind</span>
           <span className="desk-badge">Admin</span>
         </div>

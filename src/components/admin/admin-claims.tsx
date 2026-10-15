@@ -168,9 +168,9 @@ export function AdminClaims() {
                           </div>
                         ) : <span className="table-muted">Item no longer listed</span>}
                       </td>
-                      <td className="table-date">{formatDate(claim.submittedAt)}</td>
-                      <td><StatusTag status={claim.status} /></td>
-                      <td>
+                      <td className="table-date" data-label="Submitted">{formatDate(claim.submittedAt)}</td>
+                      <td className="table-cell-status"><StatusTag status={claim.status} /></td>
+                      <td className="table-cell-actions">
                         <div className="table-actions">
                           <button
                             className={`button button-small ${claim.status === "Pending" ? "button-primary" : "button-secondary"}`}
