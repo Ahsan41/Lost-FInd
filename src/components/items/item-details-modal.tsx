@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import type { FoundItem } from "@/types/item";
-import { formatDate } from "@/lib/format";
+import { formatDate, referenceNumber } from "@/lib/format";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { StatusTag } from "@/components/ui/status-tag";
@@ -13,11 +14,23 @@ interface ItemDetailsModalProps {
   onClose: () => void;
 }
 
+const checkKeys = ["category", "place", "date"] as const;
+type CheckKey = (typeof checkKeys)[number];
+
 export function ItemDetailsModal({
   item,
   onClaim,
   onClose,
 }: ItemDetailsModalProps) {
+  const [checks, setChecks] = useState<Record<CheckKey, boolean>>({ category: false, place: false, date: false });
+  const allChecked = checkKeys.every((key) => checks[key]);
+
+  const questions: { key: CheckKey; label: string }[] = [
+    { key: "category", label: `What I lost is ${/^[aeiou]/i.test(item.category) ? "an" : "a"} ${item.category.toLowerCase()} item.` },
+    { key: "place", label: `I was at or near ${item.location} when I lost it.` },
+    { key: "date", label: `I lost it on or before ${formatDate(item.foundDate)}.` },
+  ];
+
   return (
     <Modal onClose={onClose} title={`${item.name} details`} wide>
       <div className="record">
@@ -36,7 +49,7 @@ export function ItemDetailsModal({
         </div>
         <div className="record-body">
           <div className="record-topline">
-            <span className="kicker kicker-accent">{item.category}</span>
+            <span className="kicker kicker-accent">{item.category}<span className="kicker-ref">{referenceNumber(item.id)}</span></span>
             <StatusTag status={item.status} />
           </div>
           <h2 className="record-title">{item.name}</h2>
@@ -51,6 +64,10 @@ export function ItemDetailsModal({
               <dd>{formatDate(item.foundDate)}</dd>
             </div>
             <div>
+              <dt>Reference</dt>
+              <dd>{referenceNumber(item.id)}. Quote it if you contact the administrator about this entry.</dd>
+            </div>
+            <div>
               <dt>Held by</dt>
               <dd>The person who reported it, until an administrator approves a claim.</dd>
             </div>
@@ -61,11 +78,26 @@ export function ItemDetailsModal({
             </p>
           ) : (
             <div className="record-actions">
-              <button className="button button-primary" onClick={onClaim} type="button">
+              <fieldset className="match-check">
+                <legend>Does this match what you lost?</legend>
+                {questions.map(({ key, label }) => (
+                  <label className="match-check-row" key={key}>
+                    <input
+                      checked={checks[key]}
+                      onChange={(event) => setChecks((current) => ({ ...current, [key]: event.target.checked }))}
+                      type="checkbox"
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </fieldset>
+              <button className="button button-primary" disabled={!allChecked} onClick={onClaim} type="button">
                 This is mine <Icon name="arrow-right" />
               </button>
               <p className="record-actions-note">
-                You will be asked for a detail only the owner would know. It is never shown publicly.
+                {allChecked
+                  ? "You will be asked for a detail only the owner would know. It is never shown publicly."
+                  : "Tick all three to continue. If any of them is not true, this is probably not your item."}
               </p>
             </div>
           )}

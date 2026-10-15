@@ -8,26 +8,36 @@ import { AdminNotice } from "@/components/admin/admin-notice";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { Icon } from "@/components/ui/icon";
 import { StatusTag } from "@/components/ui/status-tag";
-import { formatDate } from "@/lib/format";
+import { formatDate, referenceNumber } from "@/lib/format";
 import { itemCategories, type AdminFoundItem, type AdminItemStatus } from "@/types/item";
 
 type PendingChange = { item: AdminFoundItem; status: AdminItemStatus };
+type StatusFilter = "All" | AdminItemStatus;
 
 const allCategories = "All categories";
-const allStatuses = "All statuses";
+
+/** The order the register is read in: what needs a decision first, then what is live, then what is closed. */
+const statusOrder: AdminItemStatus[] = ["Pending review", "Approved", "Rejected", "Returned"];
+
+const statusBlurb: Record<AdminItemStatus, string> = {
+  "Pending review": "Not listed yet. Approve to publish it, reject to keep it off.",
+  Approved: "Listed in the public register and open to claims.",
+  Rejected: "Kept off the register. Can still be approved later.",
+  Returned: "Handed back to the owner. Closed.",
+};
 
 export function AdminFoundItems() {
-  const { foundItems, setItemStatus, markItemReturned } = useAdminData();
+  const { foundItems, claims, setItemStatus, markItemReturned } = useAdminData();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(allCategories);
-  const [status, setStatus] = useState(allStatuses);
+  const [status, setStatus] = useState<StatusFilter>("All");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
 
   const selectedItem = foundItems.find((item) => item.id === selectedItemId) ?? null;
-  const pendingCount = foundItems.filter((item) => item.reviewStatus === "Pending review").length;
+  const selectedItemClaims = selectedItem ? claims.filter((claim) => claim.itemId === selectedItem.id) : [];
 
   const filteredItems = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -36,11 +46,29 @@ export function AdminFoundItems() {
         const matchesSearch = !search ||
           `${item.name} ${item.category} ${item.location} ${item.reporter.name}`.toLowerCase().includes(search);
         const matchesCategory = category === allCategories || item.category === category;
-        const matchesStatus = status === allStatuses || item.reviewStatus === status;
+        const matchesStatus = status === "All" || item.reviewStatus === status;
         return matchesSearch && matchesCategory && matchesStatus;
       })
       .sort((first, second) => second.submittedAt.localeCompare(first.submittedAt));
   }, [category, foundItems, query, status]);
+
+  const statusCounts = useMemo(() => {
+    const counts = new Map<StatusFilter, number>([["All", foundItems.length]]);
+    for (const item of foundItems) counts.set(item.reviewStatus, (counts.get(item.reviewStatus) ?? 0) + 1);
+    return counts;
+  }, [foundItems]);
+
+  const sections = statusOrder
+    .filter((reviewStatus) => status === "All" || reviewStatus === status)
+    .map((reviewStatus) => ({
+      status: reviewStatus,
+      items: filteredItems.filter((item) => item.reviewStatus === reviewStatus),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  function claimsOn(item: AdminFoundItem) {
+    return claims.filter((claim) => claim.itemId === item.id);
+  }
 
   function requestStatus(item: AdminFoundItem, nextStatus: AdminItemStatus) {
     setSelectedItemId(null);
@@ -66,19 +94,26 @@ export function AdminFoundItems() {
   function clearFilters() {
     setQuery("");
     setCategory(allCategories);
-    setStatus(allStatuses);
+    setStatus("All");
   }
 
-  const confirmationTitle = pendingChange?.status === "Rejected"
-    ? "Reject this report?"
-    : pendingChange?.status === "Returned"
-      ? "Mark this item as returned?"
-      : "Approve this report?";
-  const confirmationDescription = pendingChange?.status === "Rejected"
-    ? `“${pendingChange.item.name}” will not be listed publicly. You can still approve it later.`
-    : pendingChange?.status === "Returned"
-      ? `Confirm that “${pendingChange.item.name}” has been handed back to its owner. The entry will be marked reunited and any remaining claims closed.`
-      : `“${pendingChange?.item.name}” will appear in the public register so its owner can find and claim it.`;
+  let confirmationTitle = "";
+  let confirmationDescription = "";
+  if (pendingChange) {
+    const { item, status: nextStatus } = pendingChange;
+    const pending = claimsOn(item).filter((claim) => claim.status === "Pending").length;
+    const approved = claimsOn(item).find((claim) => claim.status === "Approved");
+    if (nextStatus === "Rejected") {
+      confirmationTitle = "Reject this report?";
+      confirmationDescription = `“${item.name}” will not be listed publicly. You can still approve it later.`;
+    } else if (nextStatus === "Returned") {
+      confirmationTitle = "Mark this item as returned?";
+      confirmationDescription = `Confirm that “${item.name}” has been handed back${approved ? ` to ${approved.claimant.name}` : ""}. The entry is marked reunited${pending > 0 ? ` and ${pending === 1 ? "the remaining pending claim is" : `the ${pending} remaining pending claims are`} rejected` : ""}.`;
+    } else {
+      confirmationTitle = "Approve this report?";
+      confirmationDescription = `“${item.name}” will appear in the public register so its owner can find and claim it.`;
+    }
+  }
 
   return (
     <>
@@ -86,115 +121,126 @@ export function AdminFoundItems() {
         <div>
           <h2>Found-item reports</h2>
           <p>
-            Approve a report to list it in the public register, reject it to keep it off, and mark it returned once
-            the hand-over has happened. Reporter contact details never leave this workspace.
+            Read top to bottom: reports waiting for a decision first, then what is listed, then what is closed.
+            Reporter contact details never leave this workspace.
           </p>
         </div>
-        {pendingCount > 0 && (
-          <button
-            className="button button-secondary button-small"
-            onClick={() => { setStatus("Pending review"); setCategory(allCategories); setQuery(""); }}
-            type="button"
-          >
-            Show {pendingCount} pending
-          </button>
-        )}
       </div>
 
       {notice && <AdminNotice message={notice} onDismiss={() => setNotice("")} />}
 
-      <div className="filterbar">
-        <label className="filter-search">
-          <Icon name="search" />
-          <input
-            aria-label="Search found item reports"
-            className="field-input"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search name, location or reporter"
-            type="text"
-            value={query}
-          />
-        </label>
-        <label>
-          <span className="sr-only">Filter found items by category</span>
-          <select className="field-input filter-select" onChange={(event) => setCategory(event.target.value)} value={category}>
-            <option>{allCategories}</option>
-            {itemCategories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Filter found items by review status</span>
-          <select className="field-input filter-select" onChange={(event) => setStatus(event.target.value)} value={status}>
-            <option>{allStatuses}</option>
-            <option>Pending review</option>
-            <option>Approved</option>
-            <option>Rejected</option>
-            <option>Returned</option>
-          </select>
-        </label>
-      </div>
+      <div className="desk-split">
+        <aside aria-label="Search and filter reports" className="rail">
+          <label className="rail-search">
+            <Icon name="search" />
+            <input
+              aria-label="Search found item reports"
+              className="field-input"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Name, location or reporter"
+              type="text"
+              value={query}
+            />
+          </label>
 
-      <section aria-label="Found item reports" className="panel">
-        <div className="panel-head">
-          <div>
-            <h3>All reports</h3>
-            <p>{filteredItems.length} {filteredItems.length === 1 ? "result" : "results"} from the LostNFind API</p>
+          <div aria-label="Filter found items by review status" className="rail-group" role="group">
+            <p className="rail-label">Status</p>
+            {(["All", ...statusOrder] as StatusFilter[]).map((option) => (
+              <button
+                aria-pressed={status === option}
+                className="rail-option"
+                key={option}
+                onClick={() => setStatus(option)}
+                type="button"
+              >
+                {option === "All" ? "All reports" : option}
+                <span aria-hidden="true" className="rail-option-count">{statusCounts.get(option) ?? 0}</span>
+              </button>
+            ))}
           </div>
-        </div>
-        {filteredItems.length ? (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr><th>Found item</th><th>Category</th><th>Found location</th><th>Submitted</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <div className="table-primary">
+
+          <div className="rail-select">
+            <label className="rail-label" htmlFor="reports-category">Category</label>
+            <select
+              aria-label="Filter found items by category"
+              className="field-input"
+              id="reports-category"
+              onChange={(event) => setCategory(event.target.value)}
+              value={category}
+            >
+              <option>{allCategories}</option>
+              {itemCategories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
+            </select>
+          </div>
+        </aside>
+
+        <section aria-label="Found item reports" className="desk-results">
+          <p className="desk-count">{filteredItems.length} {filteredItems.length === 1 ? "result" : "results"} from the LostNFind API</p>
+
+          {sections.length ? (
+            sections.map(({ status: sectionStatus, items }) => (
+              <section aria-labelledby={`section-${sectionStatus.replace(/\s+/g, "-")}`} className="status-section" key={sectionStatus}>
+                <div className="status-section-head">
+                  <h3 id={`section-${sectionStatus.replace(/\s+/g, "-")}`}>{sectionStatus}</h3>
+                  <span className="status-section-count">{items.length}</span>
+                  <p>{statusBlurb[sectionStatus]}</p>
+                </div>
+                <ol className="slips">
+                  {items.map((item) => {
+                    const itemClaims = claimsOn(item);
+                    const pendingClaims = itemClaims.filter((claim) => claim.status === "Pending").length;
+                    return (
+                      <li className="slip" key={item.id}>
                         <span className={`thumb${item.image ? "" : " thumb-empty"}`}>
-                          {item.image ? <Image alt="" fill sizes="42px" src={item.image} unoptimized /> : <Icon name="image" />}
+                          {item.image ? <Image alt="" fill sizes="48px" src={item.image} unoptimized /> : <Icon name="image" />}
                         </span>
-                        <span><strong>{item.name}</strong><small>Reported by {item.reporter.name}</small></span>
-                      </div>
-                    </td>
-                    <td>{item.category}</td>
-                    <td>{item.location}</td>
-                    <td className="table-date">{formatDate(item.submittedAt)}</td>
-                    <td><StatusTag status={item.reviewStatus} /></td>
-                    <td>
-                      <div className="table-actions">
-                        <button aria-label={`View ${item.name} details`} className="button button-secondary button-small" onClick={() => setSelectedItemId(item.id)} type="button">View</button>
-                        {item.reviewStatus === "Pending review" && (
-                          <>
+                        <span className="slip-copy">
+                          <strong>{item.name}</strong>
+                          <span className="slip-meta">{referenceNumber(item.id)} · {item.category} · {item.location}</span>
+                          <small>Reported by {item.reporter.name}</small>
+                          {itemClaims.length > 0 && (
+                            <span className="slip-claims">
+                              {itemClaims.length} {itemClaims.length === 1 ? "claim" : "claims"}
+                              {pendingClaims > 0 && <>, {pendingClaims} pending</>}
+                            </span>
+                          )}
+                        </span>
+                        <span className="queue-date">{formatDate(item.submittedAt)}</span>
+                        <StatusTag status={item.reviewStatus} />
+                        <span className="queue-actions">
+                          <button aria-label={`View ${item.name} details`} className="button button-secondary button-small" onClick={() => setSelectedItemId(item.id)} type="button">View</button>
+                          {item.reviewStatus === "Pending review" && (
+                            <>
+                              <button className="button button-primary button-small" onClick={() => requestStatus(item, "Approved")} type="button">Approve</button>
+                              <button className="button button-danger button-small" onClick={() => requestStatus(item, "Rejected")} type="button">Reject</button>
+                            </>
+                          )}
+                          {item.reviewStatus === "Rejected" && (
                             <button className="button button-primary button-small" onClick={() => requestStatus(item, "Approved")} type="button">Approve</button>
-                            <button className="button button-danger button-small" onClick={() => requestStatus(item, "Rejected")} type="button">Reject</button>
-                          </>
-                        )}
-                        {item.reviewStatus === "Rejected" && (
-                          <button className="button button-primary button-small" onClick={() => requestStatus(item, "Approved")} type="button">Approve</button>
-                        )}
-                        {item.reviewStatus === "Approved" && (
-                          <button className="button button-secondary button-small" onClick={() => requestStatus(item, "Returned")} type="button">Mark returned</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="panel-empty">
-            <h3>No reports match these filters</h3>
-            <p>Try another search term or reset the category and status filters.</p>
-            <button className="button button-secondary button-small" onClick={clearFilters} type="button">Clear filters</button>
-          </div>
-        )}
-      </section>
+                          )}
+                          {item.reviewStatus === "Approved" && (
+                            <button className="button button-secondary button-small" onClick={() => requestStatus(item, "Returned")} type="button">Mark returned</button>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            ))
+          ) : (
+            <div className="notice">
+              <h3>No reports match these filters</h3>
+              <p>Try another search term or reset the category and status filters.</p>
+              <button className="button button-secondary button-small" onClick={clearFilters} type="button">Clear filters</button>
+            </div>
+          )}
+        </section>
+      </div>
 
       {selectedItem && (
         <AdminItemDetails
+          claims={selectedItemClaims}
           item={selectedItem}
           onClose={() => setSelectedItemId(null)}
           onRequestStatus={(nextStatus) => requestStatus(selectedItem, nextStatus)}

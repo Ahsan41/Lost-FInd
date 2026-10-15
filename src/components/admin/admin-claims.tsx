@@ -8,13 +8,19 @@ import { AdminNotice } from "@/components/admin/admin-notice";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { Icon } from "@/components/ui/icon";
 import { StatusTag } from "@/components/ui/status-tag";
-import { formatDate } from "@/lib/format";
-import type { ClaimRequest, ClaimStatus } from "@/types/item";
+import { formatDate, referenceNumber } from "@/lib/format";
+import type { AdminFoundItem, ClaimRequest, ClaimStatus } from "@/types/item";
 
 type ClaimFilter = "All" | ClaimStatus;
 type PendingAction =
   | { type: "claim"; claim: ClaimRequest; status: ClaimStatus }
   | { type: "return"; claim: ClaimRequest; itemName: string };
+
+interface ClaimGroup {
+  key: string;
+  item: AdminFoundItem | null;
+  claims: ClaimRequest[];
+}
 
 const claimFilters: ClaimFilter[] = ["All", "Pending", "Approved", "Rejected"];
 
@@ -22,6 +28,11 @@ function initials(name: string) {
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2);
 }
 
+/**
+ * Claims are listed as comparison slips, grouped under the item they are
+ * about: the finder's description on one side, what the claimant says on the
+ * other, so a decision can be triaged from the list and confirmed in the sheet.
+ */
 export function AdminClaims() {
   const { claims, foundItems, setClaimStatus, markItemReturned } = useAdminData();
   const [query, setQuery] = useState("");
@@ -48,6 +59,27 @@ export function AdminClaims() {
       })
       .sort((first, second) => second.submittedAt.localeCompare(first.submittedAt));
   }, [claims, filter, foundItems, query]);
+
+  const groups = useMemo<ClaimGroup[]>(() => {
+    const byItem = new Map<string, ClaimGroup>();
+    for (const claim of filteredClaims) {
+      const group = byItem.get(claim.itemId);
+      if (group) group.claims.push(claim);
+      else {
+        byItem.set(claim.itemId, {
+          key: claim.itemId,
+          item: foundItems.find((candidate) => candidate.id === claim.itemId) ?? null,
+          claims: [claim],
+        });
+      }
+    }
+    return [...byItem.values()];
+  }, [filteredClaims, foundItems]);
+
+  function pendingSiblings(claim: ClaimRequest) {
+    return claims.filter((other) =>
+      other.itemId === claim.itemId && other.id !== claim.id && other.status === "Pending").length;
+  }
 
   function requestClaimStatus(claim: ClaimRequest, status: ClaimStatus) {
     setSelectedClaimId(null);
@@ -78,21 +110,26 @@ export function AdminClaims() {
     }
   }
 
-  const confirmationTitle = pendingAction?.type === "return"
-    ? "Mark the item as returned?"
-    : pendingAction?.status === "Rejected"
-      ? "Reject this claim?"
-      : "Approve this claim?";
-  const confirmationDescription = pendingAction?.type === "return"
-    ? `Confirm that “${pendingAction.itemName}” has been returned to its owner.`
-    : pendingAction?.status === "Rejected"
-      ? `${pendingAction?.claim.claimant.name} will be emailed that the claim was not accepted. The item stays listed.`
-      : `${pendingAction?.claim.claimant.name} and the finder will each receive the other’s contact details. Any other pending claims on this item will be rejected.`;
-  const confirmationLabel = pendingAction?.type === "return"
-    ? "Mark item returned"
-    : pendingAction?.status === "Rejected"
-      ? "Reject claim"
-      : "Approve claim";
+  let confirmationTitle = "";
+  let confirmationDescription = "";
+  let confirmationLabel = "";
+  if (pendingAction?.type === "return") {
+    confirmationTitle = "Mark the item as returned?";
+    confirmationDescription = `Confirm that “${pendingAction.itemName}” has been handed back to ${pendingAction.claim.claimant.name}. The entry is closed and any other pending claims on it are rejected.`;
+    confirmationLabel = "Mark item returned";
+  } else if (pendingAction?.type === "claim") {
+    const who = pendingAction.claim.claimant.name;
+    const siblings = pendingSiblings(pendingAction.claim);
+    if (pendingAction.status === "Rejected") {
+      confirmationTitle = "Reject this claim?";
+      confirmationDescription = `${who} will be emailed that the claim was not accepted. The item stays listed and open to other claims.`;
+      confirmationLabel = "Reject claim";
+    } else {
+      confirmationTitle = "Approve this claim?";
+      confirmationDescription = `${who} and the finder will each be emailed the other’s contact details to arrange the hand-over.${siblings > 0 ? ` The ${siblings === 1 ? "other pending claim" : `other ${siblings} pending claims`} on this item will be rejected.` : ""}`;
+      confirmationLabel = "Approve claim";
+    }
+  }
 
   return (
     <>
@@ -100,8 +137,8 @@ export function AdminClaims() {
         <div>
           <h2>Claim requests</h2>
           <p>
-            Compare what each claimant says with the finder’s private details before approving. Approving a claim
-            shares contact details both ways and closes any other pending claims on the same item.
+            Each slip puts what the finder wrote next to what the claimant says. Claims on the same item sit together,
+            because approving one closes the others.
           </p>
         </div>
       </div>
@@ -136,60 +173,82 @@ export function AdminClaims() {
         </div>
       </div>
 
-      <section aria-label="Claim requests" className="panel">
-        <div className="panel-head">
-          <div>
-            <h3>All claims</h3>
-            <p>{filteredClaims.length} {filteredClaims.length === 1 ? "request" : "requests"} from the LostNFind API</p>
-          </div>
-        </div>
-        {filteredClaims.length ? (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Claimant</th><th>Found item</th><th>Submitted</th><th>Status</th><th><span className="sr-only">Action</span></th></tr></thead>
-              <tbody>
-                {filteredClaims.map((claim) => {
-                  const item = foundItems.find((candidate) => candidate.id === claim.itemId);
-                  return (
-                    <tr key={claim.id}>
-                      <td>
-                        <div className="table-primary">
-                          <span aria-hidden="true" className="avatar">{initials(claim.claimant.name)}</span>
-                          <span><strong>{claim.claimant.name}</strong><small>{claim.claimant.email}</small></span>
+      <section aria-label="Claim requests" className="desk-results">
+        <p className="desk-count">
+          {filteredClaims.length} {filteredClaims.length === 1 ? "request" : "requests"} from the LostNFind API
+          {groups.length > 1 && <> · {groups.length} items</>}
+        </p>
+
+        {groups.length ? (
+          <ol className="claim-groups">
+            {groups.map(({ key, item, claims: groupClaims }) => (
+              <li className="claim-group" key={key}>
+                <div className="claim-group-head">
+                  <span className={`thumb${item?.image ? "" : " thumb-empty"}`}>
+                    {item?.image ? <Image alt="" fill sizes="42px" src={item.image} unoptimized /> : <Icon name="image" />}
+                  </span>
+                  <span className="claim-group-copy">
+                    {item ? (
+                      <>
+                        <strong>{item.name}</strong>
+                        <small>{referenceNumber(item.id)} · {item.category} · {item.location}</small>
+                      </>
+                    ) : (
+                      <>
+                        <strong>Item no longer listed</strong>
+                        <small>The found-item record for this claim is gone.</small>
+                      </>
+                    )}
+                  </span>
+                  {item && <StatusTag status={item.reviewStatus} />}
+                  <span className="claim-group-count">
+                    {groupClaims.length} {groupClaims.length === 1 ? "claim" : "claims"}
+                  </span>
+                </div>
+
+                <ul className="claim-slips">
+                  {groupClaims.map((claim) => (
+                    <li className="claim-slip" key={claim.id}>
+                      <div className="claim-slip-head">
+                        <span aria-hidden="true" className="avatar">{initials(claim.claimant.name)}</span>
+                        <span className="claim-slip-who">
+                          <strong>{claim.claimant.name}</strong>
+                          <small>{claim.claimant.email}</small>
+                        </span>
+                        <span className="queue-date">{formatDate(claim.submittedAt)}</span>
+                        <StatusTag status={claim.status} />
+                        <button
+                          className={`button button-small ${claim.status === "Pending" ? "button-primary" : "button-secondary"}`}
+                          disabled={!item}
+                          onClick={() => setSelectedClaimId(claim.id)}
+                          type="button"
+                        >
+                          Review
+                        </button>
+                      </div>
+                      <div className="compare-mini">
+                        <div>
+                          <span className="compare-label">Finder wrote</span>
+                          <p>{item?.description ?? "—"}</p>
                         </div>
-                      </td>
-                      <td>
-                        {item ? (
-                          <div className="table-primary">
-                            <span className={`thumb${item.image ? "" : " thumb-empty"}`}>
-                              {item.image ? <Image alt="" fill sizes="42px" src={item.image} unoptimized /> : <Icon name="image" />}
-                            </span>
-                            <span><strong>{item.name}</strong><small>{item.category} · {item.location}</small></span>
-                          </div>
-                        ) : <span className="table-muted">Item no longer listed</span>}
-                      </td>
-                      <td className="table-date">{formatDate(claim.submittedAt)}</td>
-                      <td><StatusTag status={claim.status} /></td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            className={`button button-small ${claim.status === "Pending" ? "button-primary" : "button-secondary"}`}
-                            disabled={!item}
-                            onClick={() => setSelectedClaimId(claim.id)}
-                            type="button"
-                          >
-                            Review
-                          </button>
+                        <div>
+                          <span className="compare-label">Claimant says they lost</span>
+                          <p>{claim.lostItemDescription}</p>
+                          <span className="compare-label">Proof offered</span>
+                          <p className="compare-proof">
+                            {claim.ownershipProof}
+                            {claim.supportingImage && <span className="compare-attachment"><Icon name="image" />with image</span>}
+                          </p>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
         ) : (
-          <div className="panel-empty">
+          <div className="notice">
             <h3>No claim requests found</h3>
             <p>Try another search or select a different status.</p>
             <button className="button button-secondary button-small" onClick={() => { setQuery(""); setFilter("All"); }} type="button">Clear search and filter</button>
@@ -204,6 +263,7 @@ export function AdminClaims() {
           onClose={() => setSelectedClaimId(null)}
           onRequestReturn={() => requestReturn(selectedClaim)}
           onRequestStatus={(nextStatus) => requestClaimStatus(selectedClaim, nextStatus)}
+          pendingSiblings={pendingSiblings(selectedClaim)}
         />
       )}
       {pendingAction && (

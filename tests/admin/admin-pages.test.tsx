@@ -58,23 +58,45 @@ describe("Admin workspace: loading and shell", () => {
 });
 
 describe("Overview page (AdminOverview)", () => {
-  it("fills the four tiles and both recent tables from /api/admin/stats", async () => {
+  it("shows the totals from /api/admin/stats and queues what is waiting for a decision", async () => {
     installFakeApi(adminRoutes());
     renderAdmin(<AdminOverview />);
     const summary = await screen.findByRole("region", { name: "Dashboard summary" });
-    const tiles = within(summary).getAllByRole("article");
-    expect(tiles.map((tile) => tile.textContent)).toEqual([
-      expect.stringContaining("Total Found Items5"),
-      expect.stringContaining("Pending Claims2"),
-      expect.stringContaining("Approved Claims1"),
-      expect.stringContaining("Items Returned1"),
-    ]);
+    expect(summary).toHaveTextContent("Total Found Items5");
+    expect(summary).toHaveTextContent("Pending Claims2");
+    expect(summary).toHaveTextContent("Approved Claims1");
+    expect(summary).toHaveTextContent("Items Returned1");
 
-    const reports = screen.getByRole("region", { name: "Recent found-item reports" });
-    expect(within(reports).getAllByRole("row")).toHaveLength(5); // header + 4
-    const claims = screen.getByRole("region", { name: "Recent claim requests" });
+    const reports = screen.getByRole("region", { name: "Reports awaiting review" });
+    expect(within(reports).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(reports).getByText("Cream scarf with fringe")).toBeInTheDocument();
+    expect(within(reports).getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(within(reports).getByRole("button", { name: "Reject" })).toBeInTheDocument();
+
+    const claims = screen.getByRole("region", { name: "Claims awaiting a decision" });
+    expect(within(claims).getAllByRole("listitem")).toHaveLength(2);
     expect(within(claims).getByText("Robin Harper")).toBeInTheDocument();
-    expect(within(claims).getAllByText("Silver wristwatch").length).toBeGreaterThan(0);
+    expect(within(claims).getByText("Devon Price")).toBeInTheDocument();
+    expect(within(claims).queryByText("Emery Clark")).not.toBeInTheDocument();
+  });
+
+  it("approves a queued report from the overview after confirming", async () => {
+    const scarf = adminItems.find((item) => item.id === "item-scarf")!;
+    const { calls } = installFakeApi(
+      adminRoutes({
+        "PATCH /api/admin/items/item-scarf/status": () => ok({ ...scarf, reviewStatus: "Approved" }),
+      }),
+    );
+    renderAdmin(<AdminOverview />);
+    const reports = await screen.findByRole("region", { name: "Reports awaiting review" });
+    const user = userEvent.setup();
+    await user.click(within(reports).getByRole("button", { name: "Approve" }));
+    await user.click(within(screen.getByRole("dialog", { name: "Approve this report?" })).getByRole("button", { name: "Approve report" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Cream scarf with fringe marked approved.");
+    const patch = calls.find((call) => call.method === "PATCH")!;
+    expect(patch.url).toBe("/api/admin/items/item-scarf/status");
+    expect(within(screen.getByRole("region", { name: "Reports awaiting review" })).queryByRole("listitem")).not.toBeInTheDocument();
   });
 });
 
@@ -84,8 +106,15 @@ describe("Found Items page (AdminFoundItems)", () => {
     renderAdmin(<AdminFoundItems />);
     expect(await screen.findByText("5 results from the LostNFind API")).toBeInTheDocument();
     expect(screen.getByText("Reported by Chris Taylor")).toBeInTheDocument();
+    // sections read in decision order
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Pending review",
+      "Approved",
+      "Rejected",
+      "Returned",
+    ]);
 
-    const rowOf = (name: string) => screen.getByText(name).closest("tr")!;
+    const rowOf = (name: string) => screen.getByText(name).closest("li")!;
     expect(within(rowOf("Cream scarf with fringe")).getByRole("button", { name: "Approve" })).toBeInTheDocument();
     expect(within(rowOf("Cream scarf with fringe")).getByRole("button", { name: "Reject" })).toBeInTheDocument();
     expect(within(rowOf("Canvas tote bag")).getByRole("button", { name: "Approve" })).toBeInTheDocument();
@@ -103,7 +132,7 @@ describe("Found Items page (AdminFoundItems)", () => {
     expect(screen.getByText("2 results from the LostNFind API")).toBeInTheDocument();
     await user.clear(screen.getByRole("textbox", { name: "Search found item reports" }));
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "Filter found items by review status" }), "Pending review");
+    await user.click(within(screen.getByRole("group", { name: "Filter found items by review status" })).getByRole("button", { name: "Pending review" }));
     expect(screen.getByText("1 result from the LostNFind API")).toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: "Filter found items by category" }), "Electronics");
     expect(screen.getByRole("heading", { name: "No reports match these filters" })).toBeInTheDocument();
@@ -135,7 +164,7 @@ describe("Found Items page (AdminFoundItems)", () => {
     await screen.findByText("5 results from the LostNFind API");
     const user = userEvent.setup();
 
-    const row = screen.getByText("Cream scarf with fringe").closest("tr")!;
+    const row = screen.getByText("Cream scarf with fringe").closest("li")!;
     await user.click(within(row).getByRole("button", { name: "Approve" }));
     const dialog = screen.getByRole("dialog", { name: "Approve this report?" });
     await user.click(within(dialog).getByRole("button", { name: "Approve report" }));
@@ -144,7 +173,7 @@ describe("Found Items page (AdminFoundItems)", () => {
     const patch = calls.find((call) => call.method === "PATCH")!;
     expect(patch.url).toBe("/api/admin/items/item-scarf/status");
     expect(JSON.parse(patch.body as string)).toEqual({ reviewStatus: "Approved" });
-    expect(within(screen.getByText("Cream scarf with fringe").closest("tr")!).getByRole("button", { name: "Mark returned" })).toBeInTheDocument();
+    expect(within(screen.getByText("Cream scarf with fringe").closest("li")!).getByRole("button", { name: "Mark returned" })).toBeInTheDocument();
     // overview refreshed after the change
     expect(calls.filter((call) => call.url === "/api/admin/stats")).toHaveLength(2);
   });
@@ -160,7 +189,7 @@ describe("Found Items page (AdminFoundItems)", () => {
     renderAdmin(<AdminFoundItems />);
     await screen.findByText("5 results from the LostNFind API");
     const user = userEvent.setup();
-    await user.click(within(screen.getByText("Silver wristwatch").closest("tr")!).getByRole("button", { name: "Mark returned" }));
+    await user.click(within(screen.getByText("Silver wristwatch").closest("li")!).getByRole("button", { name: "Mark returned" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Mark returned report" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Silver wristwatch marked returned.");
@@ -178,7 +207,7 @@ describe("Found Items page (AdminFoundItems)", () => {
     renderAdmin(<AdminFoundItems />);
     await screen.findByText("5 results from the LostNFind API");
     const user = userEvent.setup();
-    await user.click(within(screen.getByText("Canvas tote bag").closest("tr")!).getByRole("button", { name: "Approve" }));
+    await user.click(within(screen.getByText("Canvas tote bag").closest("li")!).getByRole("button", { name: "Approve" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Approve report" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("That status change is not allowed.");
@@ -187,10 +216,14 @@ describe("Found Items page (AdminFoundItems)", () => {
 });
 
 describe("Claims page (AdminClaims + AdminClaimDetails)", () => {
-  it("lists claims with their item, filters by tab and search", async () => {
+  it("lists claims as comparison slips under their item, filters by tab and search", async () => {
     installFakeApi(adminRoutes());
     renderAdmin(<AdminClaims />);
-    expect(await screen.findByText("3 requests from the LostNFind API")).toBeInTheDocument();
+    expect(await screen.findByText(/3 requests from the LostNFind API/)).toBeInTheDocument();
+    // the finder's description sits next to what the claimant says
+    const slip = screen.getByText("Robin Harper").closest("li")!;
+    expect(within(slip).getByText("A silver-tone wristwatch with a dark blue face.")).toBeInTheDocument();
+    expect(within(slip).getByText("A silver watch with a navy dial.")).toBeInTheDocument();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: /^Approved$/ }));
@@ -206,9 +239,9 @@ describe("Claims page (AdminClaims + AdminClaimDetails)", () => {
   it("Review opens the claim with contact, proof and the supporting image through the admin proxy", async () => {
     installFakeApi(adminRoutes());
     renderAdmin(<AdminClaims />);
-    await screen.findByText("3 requests from the LostNFind API");
+    await screen.findByText(/3 requests from the LostNFind API/);
     const user = userEvent.setup();
-    await user.click(within(screen.getByText("Robin Harper").closest("tr")!).getByRole("button", { name: "Review" }));
+    await user.click(within(screen.getByText("Robin Harper").closest("li")!).getByRole("button", { name: "Review" }));
 
     const dialog = screen.getByRole("dialog", { name: "Claim from Robin Harper" });
     expect(within(dialog).getByText("robin@example.com")).toHaveAttribute("href", "mailto:robin@example.com");
@@ -228,9 +261,9 @@ describe("Claims page (AdminClaims + AdminClaimDetails)", () => {
       }),
     );
     renderAdmin(<AdminClaims />);
-    await screen.findByText("3 requests from the LostNFind API");
+    await screen.findByText(/3 requests from the LostNFind API/);
     const user = userEvent.setup();
-    await user.click(within(screen.getByText("Robin Harper").closest("tr")!).getByRole("button", { name: "Review" }));
+    await user.click(within(screen.getByText("Robin Harper").closest("li")!).getByRole("button", { name: "Review" }));
     await user.click(screen.getByRole("button", { name: "Approve claim" }));
     const confirm = screen.getByRole("dialog", { name: "Approve this claim?" });
     await user.click(within(confirm).getByRole("button", { name: "Approve claim" }));
@@ -252,9 +285,9 @@ describe("Claims page (AdminClaims + AdminClaimDetails)", () => {
       }),
     );
     renderAdmin(<AdminClaims />);
-    await screen.findByText("3 requests from the LostNFind API");
+    await screen.findByText(/3 requests from the LostNFind API/);
     const user = userEvent.setup();
-    await user.click(within(screen.getByText("Emery Clark").closest("tr")!).getByRole("button", { name: "Review" }));
+    await user.click(within(screen.getByText("Emery Clark").closest("li")!).getByRole("button", { name: "Review" }));
     await user.click(screen.getByRole("button", { name: "Mark item returned" }));
     await user.click(within(screen.getByRole("dialog", { name: "Mark the item as returned?" })).getByRole("button", { name: "Mark item returned" }));
 

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { FoundItem } from "@/types/item";
-import { formatDate } from "@/lib/format";
+import { formatDate, referenceNumber } from "@/lib/format";
 import { Icon } from "@/components/ui/icon";
 import { StatusTag } from "@/components/ui/status-tag";
 
@@ -35,7 +35,7 @@ export function ItemCard({ item, onSelect, variant = "tile" }: ItemCardProps) {
       </span>
       <span className="entry-body">
         <span className="entry-meta">
-          <span className="entry-category">{item.category}</span>
+          <span className="entry-category">{item.category}<span className="entry-ref">{referenceNumber(item.id)}</span></span>
           <time dateTime={item.foundDate}>Found {formatDate(item.foundDate)}</time>
         </span>
         <span aria-level={3} className="entry-title" role="heading">{item.name}</span>

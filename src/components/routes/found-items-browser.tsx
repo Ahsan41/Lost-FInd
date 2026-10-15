@@ -7,6 +7,7 @@ import { ItemCard } from "@/components/items/item-card";
 import { ItemDetailsModal } from "@/components/items/item-details-modal";
 import { Icon } from "@/components/ui/icon";
 import { SkeletonEntries } from "@/components/ui/skeleton-entries";
+import { formatDate } from "@/lib/format";
 import { getPublicApiErrorMessage, publicApi } from "@/lib/public-api";
 
 type SortOrder = "newest" | "oldest" | "name";
@@ -68,6 +69,18 @@ export function FoundItemsBrowser({
       return sort === "newest" ? dateDelta : -dateDelta;
     });
   }, [category, foundItems, query, sort]);
+
+  // Grouped by the day the item was found, like pages of a logbook. Only when sorted by date.
+  const days = useMemo(() => {
+    if (sort === "name") return null;
+    const groups: { date: string; items: FoundItem[] }[] = [];
+    for (const item of items) {
+      const last = groups[groups.length - 1];
+      if (last && last.date === item.foundDate) last.items.push(item);
+      else groups.push({ date: item.foundDate, items: [item] });
+    }
+    return groups;
+  }, [items, sort]);
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>([[allItems, foundItems.length]]);
@@ -169,13 +182,33 @@ export function FoundItemsBrowser({
               </div>
             ) : items.length ? (
               <>
-                <ol className="ledger">
-                  {items.map((item) => (
-                    <li key={item.id}>
-                      <ItemCard item={item} onSelect={setSelectedItem} variant="row" />
-                    </li>
-                  ))}
-                </ol>
+                {days ? (
+                  <ol className="logbook">
+                    {days.map(({ date, items: entries }) => (
+                      <li className="logbook-day" key={date}>
+                        <div className="logbook-date">
+                          <time dateTime={date}>{formatDate(date)}</time>
+                          <span className="logbook-count">{entries.length} {entries.length === 1 ? "entry" : "entries"}</span>
+                        </div>
+                        <ol className="ledger">
+                          {entries.map((item) => (
+                            <li key={item.id}>
+                              <ItemCard item={item} onSelect={setSelectedItem} variant="row" />
+                            </li>
+                          ))}
+                        </ol>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <ol className="ledger">
+                    {items.map((item) => (
+                      <li key={item.id}>
+                        <ItemCard item={item} onSelect={setSelectedItem} variant="row" />
+                      </li>
+                    ))}
+                  </ol>
+                )}
                 <p className="inline-note">
                   <Icon name="info" />
                   Recognise something? Open the entry and choose “This is mine”. You will be asked for a detail

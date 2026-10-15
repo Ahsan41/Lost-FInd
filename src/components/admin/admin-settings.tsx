@@ -1,46 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import { useAdminAuth } from "@/components/admin/admin-auth-gate";
-import { AdminNotice } from "@/components/admin/admin-notice";
-import { Icon } from "@/components/ui/icon";
 
-const initialPreferences = {
-  newReportAlerts: true,
-  claimAlerts: true,
-  weeklySummary: false,
-};
-
+/**
+ * Settings is deliberately small: the account the API signed in, and a plain
+ * description of what the register does on its own (the emails the API sends),
+ * so the administrator knows what each decision triggers. Nothing here is a
+ * preference, because the API has none to set.
+ */
 export function AdminSettings() {
   const { user } = useAdminAuth();
-  const [preferences, setPreferences] = useState(initialPreferences);
-  const [notice, setNotice] = useState("");
-
-  function toggle(key: keyof typeof initialPreferences) {
-    setPreferences((current) => ({ ...current, [key]: !current[key] }));
-    setNotice("");
-  }
 
   return (
     <>
       <div className="desk-page-head">
         <div>
-          <h2>Workspace settings</h2>
-          <p>Your administrator account is managed by the LostNFind API. Notification preferences below are a local preview and are not saved.</p>
+          <h2>Workspace</h2>
+          <p>Your account and what the register sends on your behalf. Both are managed by the LostNFind API.</p>
         </div>
       </div>
 
-      {notice && <AdminNotice message={notice} onDismiss={() => setNotice("")} />}
-
       <div className="settings-stack">
-        <section aria-labelledby="account-title" className="panel">
-          <div className="panel-head">
-            <div>
-              <h3 id="account-title">Account</h3>
-              <p>Signed-in administrator</p>
-            </div>
-          </div>
-          <dl className="facts facts-inset">
+        <section aria-labelledby="account-title" className="settings-block">
+          <h3 id="account-title">Account</h3>
+          <dl className="facts">
             <div>
               <dt>Name</dt>
               <dd>{user.name}</dd>
@@ -55,36 +38,32 @@ export function AdminSettings() {
             </div>
             <div>
               <dt>Session</dt>
-              <dd>Kept in a secure cookie; expires automatically.</dd>
+              <dd>Kept in a secure cookie that expires on its own. Sign out from the top bar to end it early.</dd>
             </div>
           </dl>
         </section>
 
-        <section aria-label="Notification preferences" className="panel">
-          <div className="panel-head">
-            <div>
-              <h3>Notifications</h3>
-              <p>Preview only. Email notifications are sent by the API regardless of these switches.</p>
-            </div>
-          </div>
-          <label className="setting-row" htmlFor="setting-report-alerts">
-            <span><strong>New found-item reports</strong><p>Show a notification when a community report arrives.</p></span>
-            <input checked={preferences.newReportAlerts} className="toggle" id="setting-report-alerts" onChange={() => toggle("newReportAlerts")} type="checkbox" />
-          </label>
-          <label className="setting-row" htmlFor="setting-claim-alerts">
-            <span><strong>Claim requests</strong><p>Show a notification when someone submits an ownership claim.</p></span>
-            <input checked={preferences.claimAlerts} className="toggle" id="setting-claim-alerts" onChange={() => toggle("claimAlerts")} type="checkbox" />
-          </label>
-          <label className="setting-row" htmlFor="setting-weekly-summary">
-            <span><strong>Weekly community summary</strong><p>Preview a weekly overview of reports, claims, and returned items.</p></span>
-            <input checked={preferences.weeklySummary} className="toggle" id="setting-weekly-summary" onChange={() => toggle("weeklySummary")} type="checkbox" />
-          </label>
-          <div className="settings-foot">
-            <p>Applies to this browser session only.</p>
-            <button className="button button-secondary button-small" onClick={() => setNotice("Preference preview updated for this browser session only. Nothing was saved.")} type="button">
-              <Icon name="check" />Apply preview
-            </button>
-          </div>
+        <section aria-labelledby="mail-title" className="settings-block">
+          <h3 id="mail-title">What the register sends</h3>
+          <ol className="mail-rules">
+            <li>
+              <span className="mail-rules-when">A claim is submitted</span>
+              <span className="mail-rules-what">You receive an email so it can be reviewed.</span>
+            </li>
+            <li>
+              <span className="mail-rules-when">You approve a claim</span>
+              <span className="mail-rules-what">The claimant receives the finder’s contact details, and the finder receives the claimant’s. Other pending claims on the item are rejected.</span>
+            </li>
+            <li>
+              <span className="mail-rules-when">You reject a claim</span>
+              <span className="mail-rules-what">The claimant is told the claim was not accepted. The item stays listed.</span>
+            </li>
+            <li>
+              <span className="mail-rules-when">You mark an item returned</span>
+              <span className="mail-rules-what">The approved claimant is told the entry is closed. The item shows as reunited in the public register.</span>
+            </li>
+          </ol>
+          <p className="settings-note">Approving or rejecting a report sends nothing. Reporters see the outcome in the public register.</p>
         </section>
       </div>
     </>

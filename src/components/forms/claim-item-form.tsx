@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState, type FormEvent } from "react";
 import type { FoundItem } from "@/types/item";
-import { isValidEmail, isValidPhone } from "@/lib/format";
+import { isValidEmail, isValidPhone, referenceNumber } from "@/lib/format";
 import {
   getApiFieldErrors,
   getPublicApiErrorMessage,
@@ -115,7 +115,7 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
           {item.image && <Image alt="" fill sizes="56px" src={item.image} unoptimized />}
         </div>
         <div className="claim-subject-copy">
-          <small>You are claiming</small>
+          <small>You are claiming · {referenceNumber(item.id)}</small>
           <strong>{item.name}</strong>
           <span>{item.category} · {item.location}</span>
         </div>

@@ -16,9 +16,10 @@ const navigation = [
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { claims, error, dismissError } = useAdminData();
+  const { claims, foundItems, error, dismissError } = useAdminData();
   const { user, signOut } = useAdminAuth();
   const pendingClaims = claims.filter((claim) => claim.status === "Pending").length;
+  const pendingReports = foundItems.filter((item) => item.reviewStatus === "Pending review").length;
 
   return (
     <div className="desk-app">
@@ -43,6 +44,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
                     <span className={`desk-tab-count${pendingClaims > 0 ? " desk-tab-count-live" : ""}`}>
                       {pendingClaims}
                     </span>
+                  )}
+                  {label === "Found items" && pendingReports > 0 && (
+                    <span className="desk-tab-count desk-tab-count-live">{pendingReports}</span>
                   )}
                 </Link>
               );

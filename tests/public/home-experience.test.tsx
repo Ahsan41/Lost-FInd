@@ -64,7 +64,11 @@ describe("Home page (HomeExperience)", () => {
     expect(within(dialog).getByText("Riverside Park, near the east entrance")).toBeInTheDocument();
     expect(within(dialog).getByText("Oct 8, 2026")).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("button", { name: /This is mine/ }));
+    const claimButton = within(dialog).getByRole("button", { name: /This is mine/ });
+    expect(claimButton).toBeDisabled();
+    for (const box of within(dialog).getAllByRole("checkbox")) await user.click(box);
+    expect(claimButton).toBeEnabled();
+    await user.click(claimButton);
     expect(screen.getByRole("dialog", { name: "Claim Silver wristwatch" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Claim this item" })).toBeInTheDocument();
   });

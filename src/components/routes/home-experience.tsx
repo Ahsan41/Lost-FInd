@@ -9,8 +9,15 @@ import { ItemCard } from "@/components/items/item-card";
 import { ItemDetailsModal } from "@/components/items/item-details-modal";
 import { Icon } from "@/components/ui/icon";
 import { SkeletonEntries } from "@/components/ui/skeleton-entries";
-import { formatDate } from "@/lib/format";
+import { formatDate, referenceNumber } from "@/lib/format";
 import { getPublicApiErrorMessage, publicApi } from "@/lib/public-api";
+
+const maxInlineMatches = 5;
+const maxLocations = 8;
+
+function matchesQuery(item: FoundItem, query: string): boolean {
+  return `${item.name} ${item.location} ${item.category} ${item.description}`.toLowerCase().includes(query);
+}
 
 export function HomeExperience() {
   const openReport = useReportDialog();
@@ -20,6 +27,7 @@ export function HomeExperience() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [draft, setDraft] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -38,9 +46,14 @@ export function HomeExperience() {
     };
   }, [retryCount]);
 
+  const ready = !loading && !loadError;
   const recentItems = foundItems.slice(0, 3);
+  const reunited = useMemo(
+    () => foundItems.filter((item) => item.status === "Reunited").slice(0, 6),
+    [foundItems],
+  );
 
-  const tally = useMemo(() => {
+  const register = useMemo(() => {
     const waiting = foundItems.filter((item) => item.status === "Waiting for owner").length;
     const latest = foundItems.reduce<string | null>(
       (newest, item) => (newest === null || item.foundDate > newest ? item.foundDate : newest),
@@ -48,10 +61,29 @@ export function HomeExperience() {
     );
     const byCategory = new Map<string, number>();
     for (const item of foundItems) byCategory.set(item.category, (byCategory.get(item.category) ?? 0) + 1);
-    return { waiting, reunited: foundItems.length - waiting, latest, byCategory };
+
+    // Locations are free text, so group case-insensitively and keep the first spelling seen.
+    const byLocation = new Map<string, { label: string; count: number }>();
+    for (const item of foundItems) {
+      const label = item.location.trim();
+      const key = label.toLowerCase();
+      if (!key) continue;
+      const entry = byLocation.get(key);
+      if (entry) entry.count += 1;
+      else byLocation.set(key, { label, count: 1 });
+    }
+    const locations = [...byLocation.values()]
+      .sort((first, second) => second.count - first.count || first.label.localeCompare(second.label))
+      .slice(0, maxLocations);
+
+    return { waiting, latest, byCategory, locations };
   }, [foundItems]);
 
-  const ready = !loading && !loadError;
+  const query = draft.trim().toLowerCase();
+  const inlineMatches = useMemo(
+    () => (query ? foundItems.filter((item) => matchesQuery(item, query)) : []),
+    [foundItems, query],
+  );
 
   function retryLoading() {
     setLoading(true);
@@ -67,50 +99,81 @@ export function HomeExperience() {
   return (
     <>
       <section className="desk">
-        <div className="page-container desk-grid">
-          <div>
-            <p className="kicker">Found-property register</p>
-            <h1 className="desk-title">
-              Lost something? Start with what has <em>already been found.</em>
-            </h1>
-            <p className="lede desk-lede">
-              People who find belongings log them here with where and when they were found.
-              Search the register, open an entry, and send a private claim if it is yours.
-            </p>
-            <form action="/found-items" className="desk-search" role="search">
-              <div className="desk-search-input">
-                <Icon name="search" />
-                <input
-                  aria-label="Search found items by name or location"
-                  className="field-input"
-                  name="q"
-                  placeholder="Try “black wallet”, “Central Library” or “keys”"
-                  type="text"
-                />
-              </div>
-              <button className="button button-primary" type="submit">Search the register</button>
-            </form>
-            <p className="desk-search-hint">Searches item names, descriptions, categories and the place they were found.</p>
-          </div>
+        <div className="page-container desk-inner">
+          <h1 className="desk-title">Lost something? Search what has already been found.</h1>
+          <p className="desk-status">
+            {ready && foundItems.length > 0 && (
+              <>
+                <strong>{register.waiting}</strong> {register.waiting === 1 ? "item is" : "items are"} waiting for an owner
+                {register.latest && <> · latest find logged {formatDate(register.latest)}</>}
+              </>
+            )}
+            {ready && foundItems.length === 0 && "The register is open. Nothing has been logged yet."}
+            {loading && "Opening the register…"}
+          </p>
 
-          <aside aria-label="Register at a glance" className="tally">
-            <p className="tally-title">Register at a glance</p>
-            <dl>
-              <div>
-                <dt>Waiting for an owner</dt>
-                <dd>{ready ? tally.waiting : "—"}</dd>
-              </div>
-              <div>
-                <dt>Reunited so far</dt>
-                <dd>{ready ? tally.reunited : "—"}</dd>
-              </div>
-              <div>
-                <dt>Most recent find</dt>
-                <dd className="tally-date">{ready && tally.latest ? formatDate(tally.latest) : "—"}</dd>
-              </div>
-            </dl>
-            <p className="tally-note">Counts cover reports an administrator has approved for listing.</p>
-          </aside>
+          <form action="/found-items" className="desk-search" role="search">
+            <div className="desk-search-input">
+              <Icon name="search" />
+              <input
+                aria-label="Search found items by name or location"
+                autoComplete="off"
+                className="field-input"
+                name="q"
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="What did you lose? Try “black wallet”, “keys” or a place"
+                type="text"
+                value={draft}
+              />
+            </div>
+            <button className="button button-primary" type="submit">Search</button>
+          </form>
+
+          {query && ready && (
+            <div className="desk-matches">
+              {inlineMatches.length ? (
+                <>
+                  <p className="desk-matches-label">
+                    {inlineMatches.length} {inlineMatches.length === 1 ? "entry matches" : "entries match"} “{draft.trim()}”
+                  </p>
+                  <ol className="desk-matches-list">
+                    {inlineMatches.slice(0, maxInlineMatches).map((item) => (
+                      <li key={item.id}>
+                        <button className="desk-match" onClick={() => setSelectedItem(item)} type="button">
+                          <span className="desk-match-ref">{referenceNumber(item.id)}</span>
+                          <span className="desk-match-name">{item.name}</span>
+                          <span className="desk-match-where">{item.location}</span>
+                          <span className="desk-match-date">{formatDate(item.foundDate)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                  {inlineMatches.length > maxInlineMatches && (
+                    <Link className="text-link" href={`/found-items?q=${encodeURIComponent(draft.trim())}`}>
+                      See all {inlineMatches.length} matches in the register
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <p className="desk-matches-label">
+                  Nothing in the register matches “{draft.trim()}” yet. New reports are added as they are approved.
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="desk-browse">
+            <span>Or browse by category</span>
+            {itemCategories.map((category) => {
+              const count = register.byCategory.get(category) ?? 0;
+              return (
+                <Link href={`/found-items?category=${encodeURIComponent(category)}`} key={category}>
+                  {category}
+                  {ready && <span aria-hidden="true" className="desk-browse-count">{count}</span>}
+                </Link>
+              );
+            })}
+          </p>
         </div>
       </section>
 
@@ -141,29 +204,24 @@ export function HomeExperience() {
         </div>
       </section>
 
-      <section aria-labelledby="category-heading" className="page-container home-section">
-        <div className="section-head">
-          <div>
-            <h2 id="category-heading">Browse by category</h2>
-            <p>Every entry in the register is filed under one of these.</p>
+      {ready && register.locations.length > 0 && (
+        <section aria-labelledby="places-heading" className="page-container home-section places">
+          <div className="places-aside">
+            <h2 id="places-heading">Where things turn up</h2>
+            <p>Places named in the register, most entries first. Open one to see everything found there.</p>
           </div>
-        </div>
-        <ul className="category-index">
-          {itemCategories.map((category) => {
-            const count = tally.byCategory.get(category) ?? 0;
-            return (
-              <li key={category}>
-                <Link href={`/found-items?category=${encodeURIComponent(category)}`}>
-                  <span>{category}</span>
-                  <span className="category-index-count">
-                    {ready ? `${count} ${count === 1 ? "entry" : "entries"}` : "—"}
-                  </span>
+          <ul className="category-index places-index">
+            {register.locations.map(({ label, count }) => (
+              <li key={label.toLowerCase()}>
+                <Link href={`/found-items?q=${encodeURIComponent(label)}`}>
+                  <span>{label}</span>
+                  <span className="category-index-count">{count} {count === 1 ? "entry" : "entries"}</span>
                 </Link>
               </li>
-            );
-          })}
-        </ul>
-      </section>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="recent-heading" className="page-container home-section">
         <div className="section-head">
@@ -206,6 +264,28 @@ export function HomeExperience() {
           </div>
         )}
       </section>
+
+      {ready && reunited.length > 0 && (
+        <section aria-labelledby="reunited-heading" className="page-container home-section">
+          <div className="closed-head">
+            <h2 id="reunited-heading">Recently reunited</h2>
+            <span className="closed-count">{reunited.length} closed {reunited.length === 1 ? "entry" : "entries"}</span>
+          </div>
+          <ol className="closed-log">
+            {reunited.map((item) => (
+              <li key={item.id}>
+                <button aria-label={`Open closed entry ${item.name}`} className="closed-row" onClick={() => setSelectedItem(item)} type="button">
+                  <span aria-hidden="true" className="closed-mark"><Icon name="check" /></span>
+                  <span className="closed-name">{item.name}</span>
+                  <span className="closed-meta">{item.category} · found {formatDate(item.foundDate)} · {item.location}</span>
+                  <span className="closed-ref">{referenceNumber(item.id)}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <p className="closed-note">Entries close when the administrator records the hand-over. The finder and owner are never named here.</p>
+        </section>
+      )}
 
       {selectedItem && (
         claiming ? (

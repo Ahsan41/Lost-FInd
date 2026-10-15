@@ -1,27 +1,35 @@
 import Image from "next/image";
-import type { AdminFoundItem, AdminItemStatus } from "@/types/item";
-import { formatDate } from "@/lib/format";
+import Link from "next/link";
+import type { AdminFoundItem, AdminItemStatus, ClaimRequest } from "@/types/item";
+import { formatDate, referenceNumber } from "@/lib/format";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { StatusTag } from "@/components/ui/status-tag";
 
 interface AdminItemDetailsProps {
   item: AdminFoundItem;
+  /** Claims made on this item, so the sheet can say what is riding on it. */
+  claims?: ClaimRequest[];
   onClose: () => void;
   onRequestStatus: (status: AdminItemStatus) => void;
 }
 
 export function AdminItemDetails({
   item,
+  claims = [],
   onClose,
   onRequestStatus,
 }: AdminItemDetailsProps) {
+  const pending = claims.filter((claim) => claim.status === "Pending").length;
+  const approved = claims.filter((claim) => claim.status === "Approved").length;
+  const rejected = claims.filter((claim) => claim.status === "Rejected").length;
+
   return (
     <Modal onClose={onClose} title={`${item.name} report details`}>
       <div className="sheet-record">
         <div className="record-head">
           <div>
-            <p className="kicker kicker-accent">{item.category}</p>
+            <p className="kicker kicker-accent">{item.category}<span className="kicker-ref">{referenceNumber(item.id)}</span></p>
             <h2>{item.name}</h2>
             <p>{item.location}</p>
           </div>
@@ -60,6 +68,18 @@ export function AdminItemDetails({
             <dd><StatusTag status={item.status} /></dd>
           </div>
           <div>
+            <dt>Claims on this entry</dt>
+            <dd>
+              {claims.length === 0
+                ? "None yet."
+                : <>
+                    {claims.length} {claims.length === 1 ? "claim" : "claims"}
+                    {" · "}{pending} pending, {approved} approved, {rejected} rejected.{" "}
+                    <Link href="/admin/claims">Open claims</Link>
+                  </>}
+            </dd>
+          </div>
+          <div>
             <dt>Reporter</dt>
             <dd>{item.reporter.name}</dd>
           </div>
@@ -88,7 +108,9 @@ export function AdminItemDetails({
         )}
         {item.reviewStatus === "Approved" && (
           <div className="modal-actions">
-            <span className="modal-actions-note">Use this once the item has been handed back.</span>
+            <span className="modal-actions-note">
+              {approved > 0 ? "A claim is approved. Use this once the hand-over has happened." : "Use this once the item has been handed back."}
+            </span>
             <button className="button button-primary" onClick={() => onRequestStatus("Returned")} type="button">Mark as returned</button>
           </div>
         )}

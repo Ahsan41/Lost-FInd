@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { itemCategories } from "@/types/item";
-import { isValidEmail, isValidPhone } from "@/lib/format";
+import { formatDate, isValidEmail, isValidPhone } from "@/lib/format";
 import {
   getApiFieldErrors,
   getPublicApiErrorMessage,
@@ -93,6 +94,23 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
   const [submitError, setSubmitError] = useState("");
   const submittingRef = useRef(false);
   const today = new Date().toISOString().slice(0, 10);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
+
+  function changeImage(file: File | null) {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = file ? URL.createObjectURL(file) : null;
+    setImagePreview(previewUrlRef.current);
+    setImage(file);
+  }
+
+  const previewDate = /^\d{4}-\d{2}-\d{2}$/.test(values.foundDate) ? formatDate(values.foundDate) : null;
 
   function update<K extends keyof ReportValues>(key: K, value: ReportValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -231,8 +249,29 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
 
         <fieldset className="form-section">
           <legend className="form-section-title"><span className="form-section-index">03</span>Photo</legend>
-          <ImageUploader file={image} onChange={setImage} />
+          <ImageUploader file={image} onChange={changeImage} />
         </fieldset>
+
+        <div aria-label="Preview of the public listing" className="listing-preview" role="group">
+          <p className="listing-preview-label">How this will appear in the register</p>
+          <div className="listing-preview-entry">
+            <span className="listing-preview-media">
+              {imagePreview
+                ? <Image alt="" fill sizes="96px" src={imagePreview} unoptimized />
+                : <Icon name="image" />}
+            </span>
+            <span className="listing-preview-body">
+              <span className="entry-meta">
+                <span className="entry-category">{values.category || "Category"}</span>
+                <span>{previewDate ? `Found ${previewDate}` : "Date found"}</span>
+              </span>
+              <span className="listing-preview-name">{values.name.trim() || "Item name"}</span>
+              <span className="listing-preview-where"><Icon name="pin" />{values.location.trim() || "Where it was found"}</span>
+              <span className="listing-preview-text">{values.description.trim() || "The description you write above."}</span>
+            </span>
+          </div>
+          <p className="listing-preview-note"><Icon name="lock" />Your name, email and phone number are not part of the listing.</p>
+        </div>
 
         <fieldset className="form-section">
           <legend className="form-section-title"><span className="form-section-index">04</span>How to reach you</legend>
