@@ -12,7 +12,6 @@ const navigation = [
   { href: "/admin/found-items", label: "Found items" },
   { href: "/admin/claims", label: "Claims" },
   { href: "/admin/analytics", label: "Analytics" },
-  { href: "/admin/settings", label: "Settings" },
 ] as const;
 
 export function AdminShell({ children }: { children: ReactNode }) {

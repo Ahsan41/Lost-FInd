@@ -71,6 +71,18 @@ export function AdminItemDetails({
             <dt>Reporter phone</dt>
             <dd><a href={`tel:${item.reporter.phone}`}>{item.reporter.phone}</a></dd>
           </div>
+          <div>
+            <dt>Reporter WhatsApp</dt>
+            <dd>
+              {item.reporter.whatsapp ? (
+                <a href={`https://wa.me/${item.reporter.whatsapp.replace(/\D/g, "")}`} rel="noreferrer" target="_blank">
+                  {item.reporter.whatsapp}
+                </a>
+              ) : (
+                <span className="table-muted">Not provided</span>
+              )}
+            </dd>
+          </div>
         </dl>
 
         {item.reviewStatus === "Pending review" && (

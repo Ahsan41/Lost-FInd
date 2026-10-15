@@ -37,6 +37,7 @@ export interface ReporterContact {
   name: string;
   email: string;
   phone: string;
+  whatsapp?: string;
 }
 
 export interface AdminFoundItem extends Omit<FoundItem, "image"> {
