@@ -150,45 +150,52 @@ function AdminLogin({
   }
 
   return (
-    <main className="admin-auth-state">
-      <section aria-labelledby="admin-login-title" className="admin-login-card">
-        <div className="admin-login-brand">
-          <span className="admin-login-brand-mark"><Icon name="shield" /></span>
-          <span className="brand-name">Lost<span>N</span>Find</span>
-          <span className="admin-side-label">ADMIN</span>
+    <main className="auth-screen">
+      <section aria-labelledby="admin-login-title" className="auth-card">
+        <div className="auth-brand">
+          <span className="brand-mark"><Icon name="logo" /></span>
+          <span className="brand-name">LostNFind</span>
+          <span className="desk-badge">Admin</span>
         </div>
-        <p className="admin-login-eyebrow">SECURE WORKSPACE</p>
         <h1 id="admin-login-title">Welcome back</h1>
-        <p className="admin-login-description">Sign in with your administrator account to manage reports and claims.</p>
-        <form className="admin-login-form" onSubmit={submit}>
-          <label>
-            <span>Email address</span>
+        <p className="auth-lede">Sign in to review found-item reports and ownership claims.</p>
+        <form className="auth-form" onSubmit={submit}>
+          <div className="field">
+            <label className="field-label" htmlFor="admin-email">Email address</label>
             <input
               autoComplete="username"
               autoFocus
+              className="field-input"
+              id="admin-email"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
               required
               type="email"
               value={email}
             />
-          </label>
-          <label>
-            <span>Password</span>
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="admin-password">Password</label>
             <input
               autoComplete="current-password"
+              className="field-input"
+              id="admin-password"
               name="password"
               onChange={(event) => setPassword(event.target.value)}
               required
               type="password"
               value={password}
             />
-          </label>
-          {message && <p className="admin-login-error" role="alert">{message}</p>}
+          </div>
+          {message && <p className="form-error" role="alert"><Icon name="info" />{message}</p>}
           <button className="button button-primary" disabled={submitting} type="submit">
-            {submitting ? "Signing in…" : "Sign in"}
+            {submitting ? <><span className="loading-indicator" />Signing in…</> : "Sign in"}
           </button>
         </form>
+        <p className="auth-foot">
+          <Icon name="lock" />
+          Administrator accounts are created by the LostNFind API. There is no public sign-up.
+        </p>
       </section>
     </main>
   );

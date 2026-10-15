@@ -6,9 +6,12 @@ import { ClaimItemModal } from "@/components/forms/claim-item-modal";
 import { ItemCard } from "@/components/items/item-card";
 import { ItemDetailsModal } from "@/components/items/item-details-modal";
 import { Icon } from "@/components/ui/icon";
+import { SkeletonEntries } from "@/components/ui/skeleton-entries";
 import { getPublicApiErrorMessage, publicApi } from "@/lib/public-api";
 
 type SortOrder = "newest" | "oldest" | "name";
+
+const allItems = "All items";
 
 interface FoundItemsBrowserProps {
   initialCategory: string;
@@ -23,7 +26,7 @@ export function FoundItemsBrowser({
   const [category, setCategory] = useState(
     itemCategories.some((itemCategory) => itemCategory === initialCategory)
       ? initialCategory
-      : "All items",
+      : allItems,
   );
   const [sort, setSort] = useState<SortOrder>("newest");
   const [selectedItem, setSelectedItem] = useState<FoundItem | null>(null);
@@ -55,7 +58,7 @@ export function FoundItemsBrowser({
     const filtered = foundItems.filter((item) => {
       const matchesQuery = !normalizedQuery ||
         `${item.name} ${item.location} ${item.category} ${item.description}`.toLowerCase().includes(normalizedQuery);
-      const matchesCategory = category === "All items" || item.category === category;
+      const matchesCategory = category === allItems || item.category === category;
       return matchesQuery && matchesCategory;
     });
 
@@ -66,10 +69,23 @@ export function FoundItemsBrowser({
     });
   }, [category, foundItems, query, sort]);
 
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>([[allItems, foundItems.length]]);
+    for (const item of foundItems) counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+    return counts;
+  }, [foundItems]);
+
+  const filtersActive = query.trim() !== "" || category !== allItems;
+
   function retryLoading() {
     setLoading(true);
     setLoadError("");
     setRetryCount((count) => count + 1);
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setCategory(allItems);
   }
 
   function finishClaim() {
@@ -77,74 +93,113 @@ export function FoundItemsBrowser({
     setSelectedItem(null);
   }
 
+  const countSentence = loading
+    ? "Loading found items…"
+    : `${items.length} ${items.length === 1 ? "item" : "items"} ${category !== allItems ? `in ${category}` : "waiting to be found"}`;
+
   return (
     <>
-      <section className="browser-banner">
-        <div className="page-container">
-          <p className="eyebrow"><span className="eyebrow-dot" />Every find tells a story</p>
-          <h1 className="browser-title">Found items</h1>
-          <p className="section-description">Little things, big relief. Browse what’s been found around your community.</p>
+      <div className="page-container register">
+        <header className="register-head">
+          <div>
+            <p className="kicker">Found-property register</p>
+            <h1 className="register-title">Found items</h1>
+          </div>
+          <p aria-live="polite" className="register-count">{countSentence}</p>
+        </header>
+
+        <div className="register-body">
+          <aside aria-label="Search and filter" className="rail">
+            <label className="rail-search">
+              <Icon name="search" />
+              <input
+                aria-label="Search by item or location"
+                className="field-input"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Item, place or detail"
+                type="text"
+                value={query}
+              />
+            </label>
+
+            <div aria-label="Filter by category" className="rail-group" role="group">
+              <p className="rail-label">Category</p>
+              {[allItems, ...itemCategories].map((itemCategory) => (
+                <button
+                  aria-pressed={category === itemCategory}
+                  className="rail-option"
+                  key={itemCategory}
+                  onClick={() => setCategory(itemCategory)}
+                  type="button"
+                >
+                  {itemCategory}
+                  {!loading && !loadError && (
+                    <span aria-hidden="true" className="rail-option-count">{categoryCounts.get(itemCategory) ?? 0}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="rail-select">
+              <label className="rail-label" htmlFor="register-sort">Sort</label>
+              <select
+                aria-label="Sort found items"
+                className="field-input"
+                id="register-sort"
+                onChange={(event) => setSort(event.target.value as SortOrder)}
+                value={sort}
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="name">Name: A to Z</option>
+              </select>
+            </div>
+          </aside>
+
+          <section aria-label="Browse found items" className="register-results">
+            {loadError ? (
+              <div className="notice notice-error" role="alert">
+                <h3>Could not load found items</h3>
+                <p>{loadError}</p>
+                <button className="button button-secondary button-small" onClick={retryLoading} type="button">Try again</button>
+              </div>
+            ) : loading ? (
+              <div aria-label="Loading found items" role="status">
+                <SkeletonEntries count={4} variant="row" />
+              </div>
+            ) : items.length ? (
+              <>
+                <ol className="ledger">
+                  {items.map((item) => (
+                    <li key={item.id}>
+                      <ItemCard item={item} onSelect={setSelectedItem} variant="row" />
+                    </li>
+                  ))}
+                </ol>
+                <p className="inline-note">
+                  <Icon name="info" />
+                  Recognise something? Open the entry and choose “This is mine”. You will be asked for a detail
+                  only the owner would know, which the administrator uses to check the claim.
+                </p>
+              </>
+            ) : (
+              <div className="notice">
+                <span className="notice-glyph"><Icon name="search" /></span>
+                <h3>No finds just yet</h3>
+                <p>
+                  {filtersActive
+                    ? "Nothing in the register matches this search. Try a broader word, another category, or check back later: new reports are added as they are approved."
+                    : "The register is empty right now. Reports appear here once an administrator has approved them."}
+                </p>
+                {filtersActive && (
+                  <button className="button button-secondary button-small" onClick={clearFilters} type="button">Clear search & filters</button>
+                )}
+              </div>
+            )}
+          </section>
         </div>
-      </section>
-      <section aria-label="Browse found items" className="page-container browser-section">
-        <div className="browser-controls">
-          <label className="browser-search">
-            <Icon name="search" />
-            <input aria-label="Search by item or location" onChange={(event) => setQuery(event.target.value)} placeholder="Search an item or location" value={query} />
-          </label>
-          <label>
-            <span className="sr-only">Sort found items</span>
-            <select className="sort-select" onChange={(event) => setSort(event.target.value as SortOrder)} value={sort}>
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="name">Name: A to Z</option>
-            </select>
-          </label>
-        </div>
-        <div aria-label="Filter by category" className="filter-row" role="group">
-          {["All items", ...itemCategories].map((itemCategory) => (
-            <button
-              aria-pressed={category === itemCategory}
-              className={`filter-button${category === itemCategory ? " filter-button-active" : ""}`}
-              key={itemCategory}
-              onClick={() => setCategory(itemCategory)}
-              type="button"
-            >
-              {itemCategory}
-            </button>
-          ))}
-        </div>
-        <p aria-live="polite" className="result-count">
-          {loading ? "Loading found items…" : `${items.length} ${items.length === 1 ? "item" : "items"} ${category !== "All items" ? `in ${category}` : "waiting to be found"}`}
-        </p>
-        {loadError ? (
-          <div className="empty-state" role="alert">
-            <h3>Could not load found items</h3>
-            <p>{loadError}</p>
-            <button className="button button-secondary button-small" onClick={retryLoading} type="button">Try again</button>
-          </div>
-        ) : loading ? (
-          <div aria-label="Loading found items" className="empty-state" role="status">
-            <p>Loading approved community reports…</p>
-          </div>
-        ) : items.length ? (
-          <div className="items-grid">
-            {items.map((item) => <ItemCard item={item} key={item.id} onSelect={setSelectedItem} />)}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <span className="empty-state-icon"><Icon name="search" /></span>
-            <h3>No finds just yet</h3>
-            <p>Try a different search or category. New items are added by kind people in the community.</p>
-            <button className="button button-secondary button-small" onClick={() => { setQuery(""); setCategory("All items"); }} type="button">Clear search & filters</button>
-          </div>
-        )}
-        {items.length > 0 && (
-          <div className="steps-note browse-tip">
-            <Icon name="info" />Want to claim a find? Open its card and share a few private details to help verify it’s yours.
-          </div>
-        )}
-      </section>
+      </div>
+
       {selectedItem && (
         claiming ? (
           <ClaimItemModal item={selectedItem} onCancel={() => setClaiming(false)} onDone={finishClaim} />

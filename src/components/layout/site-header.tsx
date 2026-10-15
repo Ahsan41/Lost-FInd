@@ -9,6 +9,11 @@ interface SiteHeaderProps {
   onReport: () => void;
 }
 
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/found-items", label: "Found items" },
+] as const;
+
 export function SiteHeader({ onReport }: SiteHeaderProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -20,32 +25,58 @@ export function SiteHeader({ onReport }: SiteHeaderProps) {
 
   return (
     <header className="site-header">
-      <div className="nav-inner">
-        <Link aria-label="LostNFind home" className="brand" href="/">
-          <span className="brand-mark"><Icon name="logo" /></span>
-          <span className="brand-name">Lost<span>N</span>Find</span>
-        </Link>
-        <nav aria-label="Main navigation" className="nav-links">
-          <Link aria-current={pathname === "/" ? "page" : undefined} className={`nav-link${pathname === "/" ? " nav-link-active" : ""}`} href="/">Home</Link>
-          <Link aria-current={pathname === "/found-items" ? "page" : undefined} className={`nav-link${pathname === "/found-items" ? " nav-link-active" : ""}`} href="/found-items">Found items</Link>
-        </nav>
-        <button className="button button-primary nav-report" onClick={onReport} type="button">
-          <Icon name="plus" /> Report an item
-        </button>
-        <button
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-          className="mobile-menu-toggle"
-          onClick={() => setMenuOpen((open) => !open)}
-          type="button"
-        >
-          <Icon name={menuOpen ? "close" : "menu"} />
-        </button>
+      <div className="page-container">
+        <div className="site-header-inner">
+          <Link aria-label="LostNFind home" className="brand" href="/">
+            <span className="brand-mark"><Icon name="logo" /></span>
+            <span className="brand-text">
+              <span className="brand-name">LostNFind</span>
+              <span className="brand-descriptor">Found-property register</span>
+            </span>
+          </Link>
+          <nav aria-label="Main navigation" className="site-nav">
+            {links.map(({ href, label }) => (
+              <Link
+                aria-current={pathname === href ? "page" : undefined}
+                className="site-nav-link"
+                href={href}
+                key={href}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="site-header-actions">
+            <button className="button button-primary" onClick={onReport} type="button">
+              <Icon name="plus" /> Report an item
+            </button>
+            <button
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+              className="button-icon site-menu-toggle"
+              onClick={() => setMenuOpen((open) => !open)}
+              type="button"
+            >
+              <Icon name={menuOpen ? "close" : "menu"} />
+            </button>
+          </div>
+        </div>
         {menuOpen && (
-          <nav aria-label="Mobile navigation" className="mobile-nav">
-            <Link aria-current={pathname === "/" ? "page" : undefined} className="nav-link" href="/" onClick={() => setMenuOpen(false)}>Home</Link>
-            <Link aria-current={pathname === "/found-items" ? "page" : undefined} className="nav-link" href="/found-items" onClick={() => setMenuOpen(false)}>Found items</Link>
-            <button className="button button-primary" onClick={handleReport} type="button"><Icon name="plus" /> Report an item</button>
+          <nav aria-label="Mobile navigation" className="site-nav-mobile">
+            {links.map(({ href, label }) => (
+              <Link
+                aria-current={pathname === href ? "page" : undefined}
+                className="site-nav-link"
+                href={href}
+                key={href}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </Link>
+            ))}
+            <button className="button button-primary" onClick={handleReport} type="button">
+              <Icon name="plus" /> Report an item
+            </button>
           </nav>
         )}
       </div>

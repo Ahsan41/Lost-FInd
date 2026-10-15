@@ -6,8 +6,8 @@ import { AdminClaimDetails } from "@/components/admin/admin-claim-details";
 import { useAdminData } from "@/components/admin/admin-data-provider";
 import { AdminNotice } from "@/components/admin/admin-notice";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { Icon } from "@/components/ui/icon";
+import { StatusTag } from "@/components/ui/status-tag";
 import { formatDate } from "@/lib/format";
 import type { ClaimRequest, ClaimStatus } from "@/types/item";
 
@@ -17,6 +17,10 @@ type PendingAction =
   | { type: "return"; claim: ClaimRequest; itemName: string };
 
 const claimFilters: ClaimFilter[] = ["All", "Pending", "Approved", "Rejected"];
+
+function initials(name: string) {
+  return name.split(" ").map((part) => part[0]).join("").slice(0, 2);
+}
 
 export function AdminClaims() {
   const { claims, foundItems, setClaimStatus, markItemReturned } = useAdminData();
@@ -31,6 +35,7 @@ export function AdminClaims() {
   const selectedItem = selectedClaim
     ? foundItems.find((item) => item.id === selectedClaim.itemId) ?? null
     : null;
+  const pendingCount = claims.filter((claim) => claim.status === "Pending").length;
 
   const filteredClaims = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -80,7 +85,9 @@ export function AdminClaims() {
       : "Approve this claim?";
   const confirmationDescription = pendingAction?.type === "return"
     ? `Confirm that “${pendingAction.itemName}” has been returned to its owner.`
-    : `Are you sure you want to ${pendingAction?.status === "Rejected" ? "reject" : "approve"} the claim from ${pendingAction?.claim.claimant.name}?`;
+    : pendingAction?.status === "Rejected"
+      ? `${pendingAction?.claim.claimant.name} will be emailed that the claim was not accepted. The item stays listed.`
+      : `${pendingAction?.claim.claimant.name} and the finder will each receive the other’s contact details. Any other pending claims on this item will be rejected.`;
   const confirmationLabel = pendingAction?.type === "return"
     ? "Mark item returned"
     : pendingAction?.status === "Rejected"
@@ -89,71 +96,91 @@ export function AdminClaims() {
 
   return (
     <>
-      <div className="admin-page-intro">
+      <div className="desk-page-head">
         <div>
           <h2>Claim requests</h2>
-          <p>Review private ownership details and keep each request linked to its found item.</p>
+          <p>
+            Compare what each claimant says with the finder’s private details before approving. Approving a claim
+            shares contact details both ways and closes any other pending claims on the same item.
+          </p>
         </div>
       </div>
+
       {notice && <AdminNotice message={notice} onDismiss={() => setNotice("")} />}
-      <div className="admin-filterbar admin-claim-filterbar">
-        <label className="admin-search-control">
+
+      <div className="filterbar">
+        <label className="filter-search">
           <Icon name="search" />
-          <input aria-label="Search claim requests" onChange={(event) => setQuery(event.target.value)} placeholder="Search claimant or found item" value={query} />
+          <input
+            aria-label="Search claim requests"
+            className="field-input"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search claimant or found item"
+            type="text"
+            value={query}
+          />
         </label>
-        <div aria-label="Filter claim requests by status" className="admin-filter-tabs" role="group">
+        <div aria-label="Filter claim requests by status" className="filter-tabs" role="group">
           {claimFilters.map((claimFilter) => (
             <button
               aria-pressed={filter === claimFilter}
-              className={`admin-filter-tab${filter === claimFilter ? " admin-filter-tab-active" : ""}`}
+              className="filter-tab"
               key={claimFilter}
               onClick={() => setFilter(claimFilter)}
               type="button"
             >
               {claimFilter}
-              {claimFilter === "Pending" && <span>{claims.filter((claim) => claim.status === "Pending").length}</span>}
+              {claimFilter === "Pending" && <span>{pendingCount}</span>}
             </button>
           ))}
         </div>
       </div>
-      <section aria-label="Claim requests" className="admin-panel">
-        <div className="admin-panel-header">
-          <div><h3>All claims</h3><p>{filteredClaims.length} {filteredClaims.length === 1 ? "request" : "requests"} from the LostNFind API</p></div>
+
+      <section aria-label="Claim requests" className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>All claims</h3>
+            <p>{filteredClaims.length} {filteredClaims.length === 1 ? "request" : "requests"} from the LostNFind API</p>
+          </div>
         </div>
         {filteredClaims.length ? (
-          <div className="admin-table-wrap">
-            <table className="admin-table admin-claims-table">
-              <thead><tr><th>Claimant</th><th>Found item</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Claimant</th><th>Found item</th><th>Submitted</th><th>Status</th><th><span className="sr-only">Action</span></th></tr></thead>
               <tbody>
                 {filteredClaims.map((claim) => {
                   const item = foundItems.find((candidate) => candidate.id === claim.itemId);
                   return (
                     <tr key={claim.id}>
                       <td>
-                        <div className="admin-table-primary">
-                          <span className="admin-avatar admin-claim-avatar" aria-hidden="true">{claim.claimant.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span>
+                        <div className="table-primary">
+                          <span aria-hidden="true" className="avatar">{initials(claim.claimant.name)}</span>
                           <span><strong>{claim.claimant.name}</strong><small>{claim.claimant.email}</small></span>
                         </div>
                       </td>
                       <td>
                         {item ? (
-                          <div className="admin-table-primary">
-                            <span className="admin-item-thumb">{item.image && <Image alt="" fill sizes="38px" src={item.image} unoptimized />}</span>
+                          <div className="table-primary">
+                            <span className={`thumb${item.image ? "" : " thumb-empty"}`}>
+                              {item.image ? <Image alt="" fill sizes="42px" src={item.image} unoptimized /> : <Icon name="image" />}
+                            </span>
                             <span><strong>{item.name}</strong><small>{item.category} · {item.location}</small></span>
                           </div>
-                        ) : <span>Item no longer listed</span>}
+                        ) : <span className="table-muted">Item no longer listed</span>}
                       </td>
-                      <td>{formatDate(claim.submittedAt)}</td>
-                      <td><StatusBadge status={claim.status} /></td>
+                      <td className="table-date">{formatDate(claim.submittedAt)}</td>
+                      <td><StatusTag status={claim.status} /></td>
                       <td>
-                        <button
-                          className="button button-secondary button-small"
-                          disabled={!item}
-                          onClick={() => setSelectedClaimId(claim.id)}
-                          type="button"
-                        >
-                          Review
-                        </button>
+                        <div className="table-actions">
+                          <button
+                            className={`button button-small ${claim.status === "Pending" ? "button-primary" : "button-secondary"}`}
+                            disabled={!item}
+                            onClick={() => setSelectedClaimId(claim.id)}
+                            type="button"
+                          >
+                            Review
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -162,14 +189,14 @@ export function AdminClaims() {
             </table>
           </div>
         ) : (
-          <div className="admin-empty-state">
-            <span className="empty-state-icon"><Icon name="search" /></span>
+          <div className="panel-empty">
             <h3>No claim requests found</h3>
             <p>Try another search or select a different status.</p>
             <button className="button button-secondary button-small" onClick={() => { setQuery(""); setFilter("All"); }} type="button">Clear search and filter</button>
           </div>
         )}
       </section>
+
       {selectedClaim && selectedItem && (
         <AdminClaimDetails
           claim={selectedClaim}

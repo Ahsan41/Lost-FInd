@@ -34,7 +34,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       {!isAdminRoute && reportOpen && (
-        <Modal onClose={closeReport} title="Report a found item">
+        <Modal onClose={closeReport} title="Report a found item" variant="sheet">
           <ReportItemForm onCancel={closeReport} onDone={closeReport} />
         </Modal>
       )}

@@ -5,6 +5,7 @@ import type { FoundItem } from "@/types/item";
 import { formatDate } from "@/lib/format";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
+import { StatusTag } from "@/components/ui/status-tag";
 
 interface ItemDetailsModalProps {
   item: FoundItem;
@@ -19,49 +20,54 @@ export function ItemDetailsModal({
 }: ItemDetailsModalProps) {
   return (
     <Modal onClose={onClose} title={`${item.name} details`} wide>
-      <div className="details-layout">
-        <div className="details-image-wrap">
-          {item.image && (
+      <div className="record">
+        <div className="record-media">
+          {item.image ? (
             <Image
               alt={item.name}
-              className="details-image"
               fill
-              sizes="(max-width: 840px) 100vw, 45vw"
+              sizes="(max-width: 760px) 100vw, 420px"
               src={item.image}
               unoptimized
             />
-          )}
-          <span className="item-status">
-            <span className="item-status-dot" />
-            {item.status}
-          </span>
-        </div>
-        <div className="details-copy">
-          <span className="details-category">{item.category}</span>
-          <h2 className="modal-title">{item.name}</h2>
-          <p className="details-description">{item.description}</p>
-          <div className="details-facts">
-            <div className="details-fact">
-              <Icon name="pin" />
-              <span><small>Found at</small>{item.location}</span>
-            </div>
-            <div className="details-fact">
-              <Icon name="calendar" />
-              <span><small>Date found</small>{formatDate(item.foundDate)}</span>
-            </div>
-            <div className="details-fact">
-              <Icon name="shield" />
-              <span><small>Handled with care</small>Held safely while we look for its owner</span>
-            </div>
-          </div>
-          {item.status === "Reunited" ? (
-            <div className="item-returned-message" role="status">
-              <Icon name="check-circle" />This item has already been reunited with its owner.
-            </div>
           ) : (
-            <button className="button button-primary" onClick={onClaim} type="button">
-              This is mine <Icon name="arrow-right" />
-            </button>
+            <span className="item-image-placeholder"><Icon name="image" />No photo on file</span>
+          )}
+        </div>
+        <div className="record-body">
+          <div className="record-topline">
+            <span className="kicker kicker-accent">{item.category}</span>
+            <StatusTag status={item.status} />
+          </div>
+          <h2 className="record-title">{item.name}</h2>
+          <p className="record-description">{item.description}</p>
+          <dl className="record-facts">
+            <div>
+              <dt>Found at</dt>
+              <dd>{item.location}</dd>
+            </div>
+            <div>
+              <dt>Date found</dt>
+              <dd>{formatDate(item.foundDate)}</dd>
+            </div>
+            <div>
+              <dt>Held by</dt>
+              <dd>The person who reported it, until an administrator approves a claim.</dd>
+            </div>
+          </dl>
+          {item.status === "Reunited" ? (
+            <p className="record-closed" role="status">
+              <Icon name="check-circle" />This item has already been reunited with its owner.
+            </p>
+          ) : (
+            <div className="record-actions">
+              <button className="button button-primary" onClick={onClaim} type="button">
+                This is mine <Icon name="arrow-right" />
+              </button>
+              <p className="record-actions-note">
+                You will be asked for a detail only the owner would know. It is never shown publicly.
+              </p>
+            </div>
           )}
         </div>
       </div>

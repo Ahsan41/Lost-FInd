@@ -11,12 +11,17 @@ import {
   type ClaimInput,
 } from "@/lib/public-api";
 import { Icon } from "@/components/ui/icon";
-import { Field } from "@/components/ui/field";
+import { describedBy, Field } from "@/components/ui/field";
 import { ImageUploader } from "@/components/ui/image-uploader";
 
 type ClaimValues = ClaimInput;
 const claimFields = ["name", "email", "phone", "description", "proof"] as const satisfies readonly (keyof ClaimValues)[];
 type ClaimErrors = Partial<Record<(typeof claimFields)[number], string>>;
+
+const hints = {
+  description: "Describe it in your own words before you compare with the listing.",
+  proof: "Something that is not visible in the photo or the description: contents, an engraving, a repair, a serial number.",
+} as const;
 
 interface ClaimItemFormProps {
   item: FoundItem;
@@ -79,11 +84,18 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
 
   if (submitted) {
     return (
-      <div className="modal-content">
+      <div className="dialog-content">
         <div className="success-state">
-          <span className="success-icon"><Icon name="check-circle" /></span>
+          <span className="success-glyph"><Icon name="check" /></span>
           <h3>Claim request sent</h3>
           <p>Your claim for <strong>{item.name}</strong> was sent for review. We’ll contact you using the details you provided.</p>
+          <div className="success-next">
+            <div>
+              <strong>What happens next</strong>
+              The administrator compares your answer with details the finder kept private. If it matches,
+              you and the finder each receive the other’s contact details to arrange the hand-over.
+            </div>
+          </div>
           <button className="button button-primary" onClick={onDone} type="button">Done</button>
         </div>
       </div>
@@ -91,42 +103,111 @@ export function ClaimItemForm({ item, onCancel, onDone }: ClaimItemFormProps) {
   }
 
   return (
-    <div className="modal-content">
-      <div className="modal-heading">
-        <p className="eyebrow"><span className="eyebrow-dot" />Let’s get it back to you</p>
-        <h2 className="modal-title">Claim this item</h2>
-        <p className="modal-description">A few details help us make sure it finds the right person.</p>
-      </div>
-      <div className="claim-item-summary">
-        <div className="claim-thumb-wrap">
-          {item.image && <Image alt="" className="claim-thumb" fill sizes="54px" src={item.image} unoptimized />}
+    <div className="dialog-content">
+      <header className="dialog-head">
+        <p className="kicker kicker-accent">Ownership claim</p>
+        <h2 className="dialog-title">Claim this item</h2>
+        <p className="dialog-lede">Answer a few questions so the administrator can confirm it is yours before anyone is contacted.</p>
+      </header>
+
+      <div className="claim-subject">
+        <div className="claim-subject-media">
+          {item.image && <Image alt="" fill sizes="56px" src={item.image} unoptimized />}
         </div>
-        <div className="claim-item-summary-copy">
+        <div className="claim-subject-copy">
+          <small>You are claiming</small>
           <strong>{item.name}</strong>
           <span>{item.category} · {item.location}</span>
         </div>
       </div>
-      <form className="form-stack" noValidate onSubmit={handleSubmit}>
-        {submitError && <p className="form-error" role="alert">{submitError}</p>}
-        <div className="form-grid">
-          <Field error={errors.name} htmlFor="claim-name" label="Your full name" required>
-            <input aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "claim-name-error" : undefined} autoComplete="name" className="field-input" id="claim-name" onChange={(event) => update("name", event.target.value)} placeholder="Full name" value={values.name} />
+
+      <form className="form" noValidate onSubmit={handleSubmit}>
+        {submitError && <p className="form-error" role="alert"><Icon name="info" />{submitError}</p>}
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">01</span>Your details</legend>
+          <div className="form-row">
+            <Field error={errors.name} htmlFor="claim-name" label="Your full name" required>
+              <input
+                aria-describedby={describedBy("claim-name", { error: errors.name })}
+                aria-invalid={Boolean(errors.name)}
+                autoComplete="name"
+                className="field-input"
+                id="claim-name"
+                onChange={(event) => update("name", event.target.value)}
+                placeholder="Full name"
+                value={values.name}
+              />
+            </Field>
+            <Field error={errors.email} htmlFor="claim-email" label="Email address" required>
+              <input
+                aria-describedby={describedBy("claim-email", { error: errors.email })}
+                aria-invalid={Boolean(errors.email)}
+                autoComplete="email"
+                className="field-input"
+                id="claim-email"
+                onChange={(event) => update("email", event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                value={values.email}
+              />
+            </Field>
+          </div>
+          <Field error={errors.phone} htmlFor="claim-phone" label="Phone or WhatsApp number" required>
+            <input
+              aria-describedby={describedBy("claim-phone", { error: errors.phone })}
+              aria-invalid={Boolean(errors.phone)}
+              autoComplete="tel"
+              className="field-input"
+              id="claim-phone"
+              onChange={(event) => update("phone", event.target.value)}
+              placeholder="+92 300 1234567"
+              type="tel"
+              value={values.phone}
+            />
           </Field>
-          <Field error={errors.email} htmlFor="claim-email" label="Email address" required>
-            <input aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "claim-email-error" : undefined} autoComplete="email" className="field-input" id="claim-email" onChange={(event) => update("email", event.target.value)} placeholder="you@example.com" type="email" value={values.email} />
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">02</span>What you lost</legend>
+          <Field error={errors.description} hint={hints.description} htmlFor="claim-description" label="Describe the item you lost" required>
+            <textarea
+              aria-describedby={describedBy("claim-description", { error: errors.description, hint: hints.description })}
+              aria-invalid={Boolean(errors.description)}
+              className="field-input"
+              id="claim-description"
+              onChange={(event) => update("description", event.target.value)}
+              placeholder="Colour, brand, size, where and roughly when you lost it"
+              value={values.description}
+            />
           </Field>
-        </div>
-        <Field error={errors.phone} htmlFor="claim-phone" label="Phone or WhatsApp number" required>
-          <input aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "claim-phone-error" : undefined} autoComplete="tel" className="field-input" id="claim-phone" onChange={(event) => update("phone", event.target.value)} placeholder="+1 555 012 3456" type="tel" value={values.phone} />
-        </Field>
-        <Field error={errors.description} htmlFor="claim-description" label="Describe the item you lost" required>
-          <textarea aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "claim-description-error" : undefined} className="field-input" id="claim-description" onChange={(event) => update("description", event.target.value)} placeholder="Include details that help distinguish your item" value={values.description} />
-        </Field>
-        <Field error={errors.proof} htmlFor="claim-proof" label="What helps identify it as yours?" required>
-          <textarea aria-invalid={Boolean(errors.proof)} aria-describedby={errors.proof ? "claim-proof-error" : undefined} className="field-input" id="claim-proof" onChange={(event) => update("proof", event.target.value)} placeholder="A mark, contents, serial detail, or anything not shown publicly" value={values.proof} />
-        </Field>
-        <ImageUploader file={image} label="Supporting image" onChange={setImage} />
-        <div className="steps-note"><Icon name="shield" />Your claim details stay private and would only be used to verify ownership.</div>
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">03</span>Proof it is yours</legend>
+          <Field error={errors.proof} hint={hints.proof} htmlFor="claim-proof" label="What helps identify it as yours?" required>
+            <textarea
+              aria-describedby={describedBy("claim-proof", { error: errors.proof, hint: hints.proof })}
+              aria-invalid={Boolean(errors.proof)}
+              className="field-input"
+              id="claim-proof"
+              onChange={(event) => update("proof", event.target.value)}
+              placeholder="A mark, the contents, a serial detail, or anything not shown publicly"
+              value={values.proof}
+            />
+          </Field>
+          <ImageUploader
+            file={image}
+            hint="A receipt, an older photo of you with the item, or a close-up of a distinguishing mark."
+            label="Supporting image"
+            onChange={setImage}
+          />
+          <p className="privacy-note">
+            <Icon name="lock" />
+            Everything in this claim is private. It is only used by the administrator to verify ownership.
+          </p>
+        </fieldset>
+
         <div className="form-actions">
           <button className="button button-secondary" onClick={onCancel} type="button">Cancel</button>
           <button className="button button-primary" disabled={submitting} type="submit">

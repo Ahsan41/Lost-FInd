@@ -10,7 +10,7 @@ import {
   type ReportItemInput,
 } from "@/lib/public-api";
 import { Icon } from "@/components/ui/icon";
-import { Field } from "@/components/ui/field";
+import { describedBy, Field } from "@/components/ui/field";
 import { ImageUploader } from "@/components/ui/image-uploader";
 
 interface ReportValues {
@@ -51,6 +51,11 @@ const emptyValues: ReportValues = {
   whatsapp: "",
 };
 
+const hints = {
+  description: "Colour, brand, size, condition. Keep one identifying detail to yourself so claims can be checked against it.",
+  location: "Be specific: building, floor, room, or a nearby landmark.",
+} as const;
+
 interface ReportItemFormProps {
   onCancel: () => void;
   onDone: () => void;
@@ -87,6 +92,7 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const submittingRef = useRef(false);
+  const today = new Date().toISOString().slice(0, 10);
 
   function update<K extends keyof ReportValues>(key: K, value: ReportValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -120,11 +126,18 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
 
   if (submitted) {
     return (
-      <div className="modal-content">
+      <div className="sheet-content">
         <div className="success-state">
-          <span className="success-icon"><Icon name="check-circle" /></span>
+          <span className="success-glyph"><Icon name="check" /></span>
           <h3>Thanks for looking out</h3>
           <p>Your report has been sent for review. It will appear in the public listings after an administrator approves it.</p>
+          <div className="success-next">
+            <div>
+              <strong>What happens next</strong>
+              Keep the item somewhere safe. If someone claims it and the administrator approves the claim,
+              you will be contacted using the details you gave so you can hand it over.
+            </div>
+          </div>
           <button className="button button-primary" onClick={onDone} type="button">Done</button>
         </div>
       </div>
@@ -132,54 +145,158 @@ export function ReportItemForm({ onCancel, onDone }: ReportItemFormProps) {
   }
 
   return (
-    <div className="modal-content">
-      <div className="modal-heading">
-        <p className="eyebrow"><span className="eyebrow-dot" />Help bring it home</p>
-        <h2 className="modal-title">Report a found item</h2>
-        <p className="modal-description">Share a few details so its owner can recognize it. Your contact details won’t appear publicly.</p>
-      </div>
-      <form className="form-stack" noValidate onSubmit={handleSubmit}>
-        {submitError && <p className="form-error" role="alert">{submitError}</p>}
-        <div className="form-grid">
-          <Field error={errors.name} htmlFor="report-name" label="Item name" required>
-            <input aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "report-name-error" : undefined} autoComplete="off" className="field-input" id="report-name" onChange={(event) => update("name", event.target.value)} placeholder="e.g. Blue water bottle" value={values.name} />
+    <div className="sheet-content">
+      <header className="sheet-head">
+        <p className="kicker kicker-accent">Found-property report</p>
+        <h2 className="sheet-title">Report a found item</h2>
+        <p className="sheet-lede">
+          Describe what you found and where. An administrator reviews every report before it is listed.
+          Your contact details are only used to arrange a hand-over and never appear publicly.
+        </p>
+      </header>
+
+      <form className="form" noValidate onSubmit={handleSubmit}>
+        {submitError && <p className="form-error" role="alert"><Icon name="info" />{submitError}</p>}
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">01</span>The item</legend>
+          <div className="form-row">
+            <Field error={errors.name} htmlFor="report-name" label="Item name" required>
+              <input
+                aria-describedby={describedBy("report-name", { error: errors.name })}
+                aria-invalid={Boolean(errors.name)}
+                autoComplete="off"
+                className="field-input"
+                id="report-name"
+                onChange={(event) => update("name", event.target.value)}
+                placeholder="e.g. Black leather wallet"
+                value={values.name}
+              />
+            </Field>
+            <Field error={errors.category} htmlFor="report-category" label="Category" required>
+              <select
+                aria-describedby={describedBy("report-category", { error: errors.category })}
+                aria-invalid={Boolean(errors.category)}
+                className="field-input"
+                id="report-category"
+                onChange={(event) => update("category", event.target.value)}
+                value={values.category}
+              >
+                <option value="">Choose a category</option>
+                {itemCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field error={errors.description} hint={hints.description} htmlFor="report-description" label="Description" required>
+            <textarea
+              aria-describedby={describedBy("report-description", { error: errors.description, hint: hints.description })}
+              aria-invalid={Boolean(errors.description)}
+              className="field-input"
+              id="report-description"
+              onChange={(event) => update("description", event.target.value)}
+              placeholder="What it looks like and anything that would help the owner recognise it"
+              value={values.description}
+            />
           </Field>
-          <Field error={errors.category} htmlFor="report-category" label="Category" required>
-            <select aria-invalid={Boolean(errors.category)} aria-describedby={errors.category ? "report-category-error" : undefined} className="field-input" id="report-category" onChange={(event) => update("category", event.target.value)} value={values.category}>
-              <option value="">Choose a category</option>
-              {itemCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-            </select>
-          </Field>
-        </div>
-        <Field error={errors.description} htmlFor="report-description" label="Description" required>
-          <textarea aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "report-description-error" : undefined} className="field-input" id="report-description" onChange={(event) => update("description", event.target.value)} placeholder="Colour, distinguishing features, or where it is being held" value={values.description} />
-        </Field>
-        <div className="form-grid">
-          <Field error={errors.location} htmlFor="report-location" label="Found location" required>
-            <input aria-invalid={Boolean(errors.location)} aria-describedby={errors.location ? "report-location-error" : undefined} className="field-input" id="report-location" onChange={(event) => update("location", event.target.value)} placeholder="Place, street, or landmark" value={values.location} />
-          </Field>
-          <Field error={errors.foundDate} htmlFor="report-date" label="Date found" required>
-            <input aria-invalid={Boolean(errors.foundDate)} aria-describedby={errors.foundDate ? "report-date-error" : undefined} className="field-input" id="report-date" max={new Date().toISOString().slice(0, 10)} onChange={(event) => update("foundDate", event.target.value)} type="date" value={values.foundDate} />
-          </Field>
-        </div>
-        <ImageUploader file={image} onChange={setImage} />
-        <div className="form-grid">
-          <Field error={errors.reporterName} htmlFor="reporter-name" label="Your full name" required>
-            <input aria-invalid={Boolean(errors.reporterName)} aria-describedby={errors.reporterName ? "reporter-name-error" : undefined} autoComplete="name" className="field-input" id="reporter-name" onChange={(event) => update("reporterName", event.target.value)} placeholder="Full name" value={values.reporterName} />
-          </Field>
-          <Field error={errors.email} htmlFor="report-email" label="Email address" required>
-            <input aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "report-email-error" : undefined} autoComplete="email" className="field-input" id="report-email" onChange={(event) => update("email", event.target.value)} placeholder="you@example.com" type="email" value={values.email} />
-          </Field>
-        </div>
-        <div className="form-grid">
-          <Field error={errors.phone} htmlFor="report-phone" label="Phone number" required>
-            <input aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "report-phone-error" : undefined} autoComplete="tel" className="field-input" id="report-phone" onChange={(event) => update("phone", event.target.value)} placeholder="+1 555 012 3456" type="tel" value={values.phone} />
-          </Field>
-          <Field error={errors.whatsapp} htmlFor="report-whatsapp" label="WhatsApp number">
-            <input aria-invalid={Boolean(errors.whatsapp)} aria-describedby={errors.whatsapp ? "report-whatsapp-error" : undefined} className="field-input" id="report-whatsapp" onChange={(event) => update("whatsapp", event.target.value)} placeholder="Optional" type="tel" value={values.whatsapp} />
-          </Field>
-        </div>
-        <div className="steps-note"><Icon name="shield" />We never show your personal contact information on a public item listing.</div>
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">02</span>Where and when</legend>
+          <div className="form-row">
+            <Field error={errors.location} hint={hints.location} htmlFor="report-location" label="Found location" required>
+              <input
+                aria-describedby={describedBy("report-location", { error: errors.location, hint: hints.location })}
+                aria-invalid={Boolean(errors.location)}
+                className="field-input"
+                id="report-location"
+                onChange={(event) => update("location", event.target.value)}
+                placeholder="e.g. Central Library, second floor"
+                value={values.location}
+              />
+            </Field>
+            <Field error={errors.foundDate} htmlFor="report-date" label="Date found" required>
+              <input
+                aria-describedby={describedBy("report-date", { error: errors.foundDate })}
+                aria-invalid={Boolean(errors.foundDate)}
+                className="field-input"
+                id="report-date"
+                max={today}
+                onChange={(event) => update("foundDate", event.target.value)}
+                type="date"
+                value={values.foundDate}
+              />
+            </Field>
+          </div>
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">03</span>Photo</legend>
+          <ImageUploader file={image} onChange={setImage} />
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend className="form-section-title"><span className="form-section-index">04</span>How to reach you</legend>
+          <p className="form-section-note">Seen only by the administrator, and shared with the owner once a claim is approved.</p>
+          <div className="form-row">
+            <Field error={errors.reporterName} htmlFor="reporter-name" label="Your full name" required>
+              <input
+                aria-describedby={describedBy("reporter-name", { error: errors.reporterName })}
+                aria-invalid={Boolean(errors.reporterName)}
+                autoComplete="name"
+                className="field-input"
+                id="reporter-name"
+                onChange={(event) => update("reporterName", event.target.value)}
+                placeholder="Full name"
+                value={values.reporterName}
+              />
+            </Field>
+            <Field error={errors.email} htmlFor="report-email" label="Email address" required>
+              <input
+                aria-describedby={describedBy("report-email", { error: errors.email })}
+                aria-invalid={Boolean(errors.email)}
+                autoComplete="email"
+                className="field-input"
+                id="report-email"
+                onChange={(event) => update("email", event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                value={values.email}
+              />
+            </Field>
+          </div>
+          <div className="form-row">
+            <Field error={errors.phone} htmlFor="report-phone" label="Phone number" required>
+              <input
+                aria-describedby={describedBy("report-phone", { error: errors.phone })}
+                aria-invalid={Boolean(errors.phone)}
+                autoComplete="tel"
+                className="field-input"
+                id="report-phone"
+                onChange={(event) => update("phone", event.target.value)}
+                placeholder="+92 300 1234567"
+                type="tel"
+                value={values.phone}
+              />
+            </Field>
+            <Field error={errors.whatsapp} htmlFor="report-whatsapp" label="WhatsApp number">
+              <input
+                aria-describedby={describedBy("report-whatsapp", { error: errors.whatsapp })}
+                aria-invalid={Boolean(errors.whatsapp)}
+                className="field-input"
+                id="report-whatsapp"
+                onChange={(event) => update("whatsapp", event.target.value)}
+                placeholder="If different from your phone"
+                type="tel"
+                value={values.whatsapp}
+              />
+            </Field>
+          </div>
+          <p className="privacy-note">
+            <Icon name="lock" />
+            Contact details are never shown on the public listing. Only the administrator can see them.
+          </p>
+        </fieldset>
+
         <div className="form-actions">
           <button className="button button-secondary" onClick={onCancel} type="button">Cancel</button>
           <button className="button button-primary" disabled={submitting} type="submit">

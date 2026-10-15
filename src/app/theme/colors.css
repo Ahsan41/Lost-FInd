@@ -1,26 +1,64 @@
+/*
+ * LostNFind design tokens: colour.
+ *
+ * The palette is modelled on a found-property desk: warm paper surfaces, ink
+ * text, hairline rules, and a single burnt-clay "tag" accent reserved for the
+ * primary action and the brand mark. Every status that exists in the product
+ * has its own semantic pair (ink + soft) and is always paired with a glyph so
+ * colour is never the only signal.
+ */
 :root {
   color-scheme: light;
-  --color-ink: #14243b;
-  --color-ink-soft: #34445a;
-  --color-muted: #728097;
-  --color-subtle: #9aa6b5;
-  --color-brand: #3868ed;
-  --color-brand-strong: #2554d8;
-  --color-brand-soft: #eef3ff;
-  --color-mint: #c8f2df;
-  --color-mint-strong: #71d4ab;
-  --color-surface: #ffffff;
-  --color-surface-soft: #f7f9fc;
-  --color-surface-blue: #f2f6ff;
-  --color-border: #e6ebf1;
-  --color-border-strong: #d6deea;
-  --color-success: #16875b;
-  --color-success-soft: #eaf8f1;
-  --color-danger: #c2414b;
-  --color-danger-soft: #fff0f1;
-  --blur-public-image: 18px;
-  --shadow-card: 0 12px 32px rgb(22 42 72 / 6%);
-  --shadow-float: 0 26px 75px rgb(25 43 76 / 18%);
-  --radius-card: 22px;
-  --radius-control: 13px;
+
+  /* Surfaces */
+  --paper: #f5f1e9;
+  --paper-raised: #fffdf8;
+  --paper-sunken: #ebe5d8;
+  --paper-deep: #1f1b16;
+
+  /* Ink */
+  --ink: #1f1b16;
+  --ink-2: #4a4238;
+  --ink-3: #7a7163;
+  --ink-4: #a79d8b;
+  --ink-on-deep: #f5f1e9;
+  --ink-on-deep-muted: #b8ad99;
+
+  /* Rules */
+  --rule: #ddd5c6;
+  --rule-strong: #b9ae9b;
+
+  /* Accent: the tag */
+  --tag: #b4491f;
+  --tag-strong: #8e3615;
+  --tag-soft: #f6e2d6;
+  --tag-ink: #fffdf8;
+
+  /* Status: open (Waiting for owner, Pending claim) */
+  --open: #8a6713;
+  --open-soft: #f4ead0;
+
+  /* Status: done (Reunited, Returned, Approved) */
+  --done: #2b6a4b;
+  --done-soft: #dcebe1;
+
+  /* Status: rejected */
+  --rejected: #9d2f2a;
+  --rejected-soft: #f5dcda;
+
+  /* Status: under review (Pending review) */
+  --review: #4b5867;
+  --review-soft: #e1e5ea;
+
+  /* Focus and overlays */
+  --focus-ring: 0 0 0 3px rgb(31 27 22 / 16%);
+  --scrim: rgb(31 27 22 / 58%);
+  --shadow-dialog: 0 28px 70px rgb(31 27 22 / 26%);
+  --shadow-sheet: -24px 0 70px rgb(31 27 22 / 24%);
+
+  /* Geometry */
+  --radius-control: 3px;
+  --radius-card: 6px;
+  --control-height: 42px;
+  --control-height-small: 32px;
 }

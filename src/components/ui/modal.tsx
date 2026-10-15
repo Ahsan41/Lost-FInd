@@ -7,10 +7,12 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   title: string;
+  /** `dialog` is centred; `sheet` slides in from the right and takes the full height, for long forms. */
+  variant?: "dialog" | "sheet";
   wide?: boolean;
 }
 
-export function Modal({ children, onClose, title, wide = false }: ModalProps) {
+export function Modal({ children, onClose, title, variant = "dialog", wide = false }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
@@ -59,16 +61,18 @@ export function Modal({ children, onClose, title, wide = false }: ModalProps) {
     };
   }, []);
 
+  const sheet = variant === "sheet";
+
   return (
     <div
-      className="modal-backdrop"
+      className={`modal-backdrop${sheet ? " modal-backdrop-sheet" : ""}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
         ref={dialogRef}
-        className={`modal-panel${wide ? " modal-panel-wide" : ""}`}
+        className={`modal-panel${sheet ? " modal-panel-sheet" : ""}${wide ? " modal-panel-wide" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

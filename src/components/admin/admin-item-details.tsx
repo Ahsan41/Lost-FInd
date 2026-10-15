@@ -3,7 +3,7 @@ import type { AdminFoundItem, AdminItemStatus } from "@/types/item";
 import { formatDate } from "@/lib/format";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
-import { StatusBadge } from "@/components/admin/status-badge";
+import { StatusTag } from "@/components/ui/status-tag";
 
 interface AdminItemDetailsProps {
   item: AdminFoundItem;
@@ -18,64 +18,77 @@ export function AdminItemDetails({
 }: AdminItemDetailsProps) {
   return (
     <Modal onClose={onClose} title={`${item.name} report details`}>
-      <div className="admin-modal-content">
-        <div className="admin-item-detail-media">
+      <div className="sheet-record">
+        <div className="record-head">
+          <div>
+            <p className="kicker kicker-accent">{item.category}</p>
+            <h2>{item.name}</h2>
+            <p>{item.location}</p>
+          </div>
+          <StatusTag pill status={item.reviewStatus} />
+        </div>
+
+        <div className="record-photo">
           {item.image ? (
             <Image
               alt={`${item.name} original image for admin review`}
               fill
-              sizes="(max-width: 620px) 100vw, 560px"
+              sizes="(max-width: 640px) 100vw, 540px"
               src={item.image}
               unoptimized
             />
-          ) : <span className="admin-no-image">No image provided</span>}
+          ) : (
+            <span className="item-image-placeholder"><Icon name="image" />No image provided</span>
+          )}
         </div>
-        <div className="admin-detail-heading">
+
+        <dl className="facts">
+          <div className="facts-wide">
+            <dt>Description</dt>
+            <dd>{item.description}</dd>
+          </div>
           <div>
-            <h2 className="admin-modal-title">{item.name}</h2>
-            <p className="admin-modal-description">{item.category} · {item.location}</p>
+            <dt>Found on</dt>
+            <dd>{formatDate(item.foundDate)}</dd>
           </div>
-          <StatusBadge status={item.reviewStatus} />
-        </div>
-        <div className="admin-detail-grid">
-          <div className="admin-detail-cell admin-detail-cell-wide">
-            <small>Description</small>
-            <strong>{item.description}</strong>
+          <div>
+            <dt>Report submitted</dt>
+            <dd>{formatDate(item.submittedAt)}</dd>
           </div>
-          <div className="admin-detail-cell">
-            <small>Found on</small>
-            <strong>{formatDate(item.foundDate)}</strong>
+          <div>
+            <dt>Public status</dt>
+            <dd><StatusTag status={item.status} /></dd>
           </div>
-          <div className="admin-detail-cell">
-            <small>Report submitted</small>
-            <strong>{formatDate(item.submittedAt)}</strong>
+          <div>
+            <dt>Reporter</dt>
+            <dd>{item.reporter.name}</dd>
           </div>
-          <div className="admin-detail-cell">
-            <small>Reporter</small>
-            <strong>{item.reporter.name}</strong>
+          <div>
+            <dt>Reporter email</dt>
+            <dd><a href={`mailto:${item.reporter.email}`}>{item.reporter.email}</a></dd>
           </div>
-          <div className="admin-detail-cell">
-            <small>Reporter email</small>
-            <a href={`mailto:${item.reporter.email}`}>{item.reporter.email}</a>
+          <div>
+            <dt>Reporter phone</dt>
+            <dd><a href={`tel:${item.reporter.phone}`}>{item.reporter.phone}</a></dd>
           </div>
-          <div className="admin-detail-cell">
-            <small>Reporter phone</small>
-            <a href={`tel:${item.reporter.phone}`}>{item.reporter.phone}</a>
-          </div>
-        </div>
+        </dl>
+
         {item.reviewStatus === "Pending review" && (
-          <div className="admin-modal-actions">
+          <div className="modal-actions">
+            <span className="modal-actions-note">Approving lists this report in the public register.</span>
             <button className="button button-danger" onClick={() => onRequestStatus("Rejected")} type="button">Reject report</button>
             <button className="button button-primary" onClick={() => onRequestStatus("Approved")} type="button"><Icon name="check" />Approve report</button>
           </div>
         )}
         {item.reviewStatus === "Rejected" && (
-          <div className="admin-modal-actions">
+          <div className="modal-actions">
+            <span className="modal-actions-note">This report is not listed publicly.</span>
             <button className="button button-primary" onClick={() => onRequestStatus("Approved")} type="button"><Icon name="check" />Approve report</button>
           </div>
         )}
         {item.reviewStatus === "Approved" && (
-          <div className="admin-modal-actions">
+          <div className="modal-actions">
+            <span className="modal-actions-note">Use this once the item has been handed back.</span>
             <button className="button button-primary" onClick={() => onRequestStatus("Returned")} type="button">Mark as returned</button>
           </div>
         )}

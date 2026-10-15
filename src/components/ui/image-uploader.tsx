@@ -11,12 +11,14 @@ interface ImageUploaderProps {
   file: File | null;
   onChange: (file: File | null) => void;
   label?: string;
+  hint?: string;
 }
 
 export function ImageUploader({
   file,
   onChange,
   label = "Item image",
+  hint = "A clear photo makes an item far easier to recognise.",
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -65,7 +67,11 @@ export function ImageUploader({
 
   return (
     <div className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label">
+        {label}
+        <span className="field-optional">Optional</span>
+      </span>
+      {hint && <p className="field-hint">{hint}</p>}
       <div className="upload-area">
         <input
           ref={inputRef}
@@ -81,10 +87,11 @@ export function ImageUploader({
               alt={`Preview of ${file?.name ?? "selected image"}`}
               className="upload-preview-image"
               fill
-              sizes="(max-width: 620px) 90vw, 580px"
+              sizes="(max-width: 640px) 90vw, 580px"
               src={preview}
               unoptimized
             />
+            {file && <span className="upload-filename">{file.name}</span>}
             <div className="upload-preview">
               <button
                 className="button button-secondary button-small"
@@ -107,9 +114,9 @@ export function ImageUploader({
           </>
         ) : (
           <div className="upload-content">
-            <span className="upload-icon"><Icon name="upload" /></span>
-            <strong>Add a clear photo (optional)</strong>
-            <span>JPG, PNG or WEBP · Up to 8 MB</span>
+            <span className="upload-icon"><Icon name="camera" /></span>
+            <strong>Add a photo</strong>
+            <span>JPG, PNG or WEBP · up to 8 MB</span>
             <button
               className="button button-secondary button-small"
               onClick={openPicker}

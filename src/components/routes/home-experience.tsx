@@ -1,21 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { FoundItem, ItemCategory } from "@/types/item";
+import { useEffect, useMemo, useState } from "react";
+import { itemCategories, type FoundItem } from "@/types/item";
 import { useReportDialog } from "@/components/app-shell";
 import { ClaimItemModal } from "@/components/forms/claim-item-modal";
 import { ItemCard } from "@/components/items/item-card";
 import { ItemDetailsModal } from "@/components/items/item-details-modal";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
+import { SkeletonEntries } from "@/components/ui/skeleton-entries";
+import { formatDate } from "@/lib/format";
 import { getPublicApiErrorMessage, publicApi } from "@/lib/public-api";
-
-const categoryShortcuts: { label: ItemCategory; icon: IconName }[] = [
-  { label: "Electronics", icon: "camera" },
-  { label: "Bags & wallets", icon: "bag" },
-  { label: "Accessories", icon: "sparkle" },
-  { label: "Keys", icon: "key" },
-];
 
 export function HomeExperience() {
   const openReport = useReportDialog();
@@ -45,6 +40,19 @@ export function HomeExperience() {
 
   const recentItems = foundItems.slice(0, 3);
 
+  const tally = useMemo(() => {
+    const waiting = foundItems.filter((item) => item.status === "Waiting for owner").length;
+    const latest = foundItems.reduce<string | null>(
+      (newest, item) => (newest === null || item.foundDate > newest ? item.foundDate : newest),
+      null,
+    );
+    const byCategory = new Map<string, number>();
+    for (const item of foundItems) byCategory.set(item.category, (byCategory.get(item.category) ?? 0) + 1);
+    return { waiting, reunited: foundItems.length - waiting, latest, byCategory };
+  }, [foundItems]);
+
+  const ready = !loading && !loadError;
+
   function retryLoading() {
     setLoading(true);
     setLoadError("");
@@ -58,77 +66,133 @@ export function HomeExperience() {
 
   return (
     <>
-      <section className="hero-section">
-        <div className="hero-inner">
-          <p className="eyebrow"><span className="eyebrow-dot" />A little closer to found</p>
-          <h1 className="hero-title">Lost something?<br /><span className="hero-title-accent">Let’s find it.</span></h1>
-          <p className="hero-description">The kind-hearted corner of the internet where lost things find their way home. Search nearby finds or help someone reconnect with what matters.</p>
-          <div className="hero-actions">
-            <Link className="hero-action-card" href="/found-items">
-              <span className="hero-action-icon"><Icon name="search" /></span>
-              <span className="hero-action-content">
-                <span className="hero-action-title">I lost something</span>
-                <span className="hero-action-description">Browse recent finds and see if yours is here.</span>
-              </span>
-              <Icon className="hero-action-arrow" name="arrow-right" />
-            </Link>
-            <button className="hero-action-card hero-action-card-found" onClick={openReport} type="button">
-              <span className="hero-action-icon"><Icon name="hand" /></span>
-              <span className="hero-action-content">
-                <span className="hero-action-title">I found something</span>
-                <span className="hero-action-description">Tell us a little about it and help it get home.</span>
-              </span>
-              <Icon className="hero-action-arrow" name="arrow-right" />
-            </button>
+      <section className="desk">
+        <div className="page-container desk-grid">
+          <div>
+            <p className="kicker">Found-property register</p>
+            <h1 className="desk-title">
+              Lost something? Start with what has <em>already been found.</em>
+            </h1>
+            <p className="lede desk-lede">
+              People who find belongings log them here with where and when they were found.
+              Search the register, open an entry, and send a private claim if it is yours.
+            </p>
+            <form action="/found-items" className="desk-search" role="search">
+              <div className="desk-search-input">
+                <Icon name="search" />
+                <input
+                  aria-label="Search found items by name or location"
+                  className="field-input"
+                  name="q"
+                  placeholder="Try “black wallet”, “Central Library” or “keys”"
+                  type="text"
+                />
+              </div>
+              <button className="button button-primary" type="submit">Search the register</button>
+            </form>
+            <p className="desk-search-hint">Searches item names, descriptions, categories and the place they were found.</p>
           </div>
-          <form action="/found-items" className="hero-search" role="search">
-            <Icon className="hero-search-icon" name="search" />
-            <input aria-label="Search found items by name or location" name="q" placeholder="Try “blue backpack” or “Riverside Park”" />
-            <button className="button button-primary" type="submit">Search</button>
-          </form>
+
+          <aside aria-label="Register at a glance" className="tally">
+            <p className="tally-title">Register at a glance</p>
+            <dl>
+              <div>
+                <dt>Waiting for an owner</dt>
+                <dd>{ready ? tally.waiting : "—"}</dd>
+              </div>
+              <div>
+                <dt>Reunited so far</dt>
+                <dd>{ready ? tally.reunited : "—"}</dd>
+              </div>
+              <div>
+                <dt>Most recent find</dt>
+                <dd className="tally-date">{ready && tally.latest ? formatDate(tally.latest) : "—"}</dd>
+              </div>
+            </dl>
+            <p className="tally-note">Counts cover reports an administrator has approved for listing.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section aria-label="How the register works" className="page-container paths">
+        <div className="path path-lost">
+          <p className="kicker">If you lost something</p>
+          <h2>Search first, then claim.</h2>
+          <ol className="path-steps">
+            <li><span>01</span>Search the register by item, place or category.</li>
+            <li><span>02</span>Open an entry and compare the photo and description with what you lost.</li>
+            <li><span>03</span>Send a claim with a detail only the owner would know. The administrator checks it before anyone is contacted.</li>
+          </ol>
+          <Link className="button button-secondary" href="/found-items">Browse found items <Icon name="arrow-right" /></Link>
+        </div>
+        <div className="path path-found">
+          <p className="kicker kicker-accent">If you found something</p>
+          <h2>Log it and keep it safe.</h2>
+          <ol className="path-steps">
+            <li><span>01</span>Describe the item and where you found it. A photo helps, but keep one identifying detail to yourself.</li>
+            <li><span>02</span>An administrator reviews the report before it appears in the register.</li>
+            <li><span>03</span>When a claim is approved, you are put in touch with the owner to hand it over.</li>
+          </ol>
+          <button className="button button-primary" onClick={openReport} type="button">
+            <Icon name="plus" /> Report a found item
+          </button>
         </div>
       </section>
 
       <section aria-labelledby="category-heading" className="page-container home-section">
-        <div className="section-heading-row">
+        <div className="section-head">
           <div>
-            <p className="section-kicker">A good place to start</p>
-            <h2 className="section-title" id="category-heading">What are you looking for?</h2>
+            <h2 id="category-heading">Browse by category</h2>
+            <p>Every entry in the register is filed under one of these.</p>
           </div>
         </div>
-        <div className="category-shortcuts">
-          {categoryShortcuts.map(({ label, icon }) => (
-            <Link className="category-chip" href={`/found-items?category=${encodeURIComponent(label)}`} key={label}>
-              <Icon name={icon} />{label}
-            </Link>
-          ))}
-        </div>
+        <ul className="category-index">
+          {itemCategories.map((category) => {
+            const count = tally.byCategory.get(category) ?? 0;
+            return (
+              <li key={category}>
+                <Link href={`/found-items?category=${encodeURIComponent(category)}`}>
+                  <span>{category}</span>
+                  <span className="category-index-count">
+                    {ready ? `${count} ${count === 1 ? "entry" : "entries"}` : "—"}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section aria-labelledby="recent-heading" className="page-container home-section">
-        <div className="section-heading-row">
+        <div className="section-head">
           <div>
-            <p className="section-kicker">Freshly found</p>
-            <h2 className="section-title" id="recent-heading">Recently found items</h2>
-            <p className="section-description">A few things waiting to be reunited with their people.</p>
+            <h2 id="recent-heading">Latest entries</h2>
+            <p>The three most recently approved reports.</p>
           </div>
-          <Link className="button button-primary home-view-all" href="/found-items">View all items <Icon name="arrow-right" /></Link>
+          <Link className="text-link" href="/found-items">View the full register</Link>
         </div>
         {loadError ? (
-          <div className="empty-state" role="alert">
+          <div className="notice notice-error" role="alert">
+            <h3>The register could not be loaded</h3>
             <p>{loadError}</p>
             <button className="button button-secondary button-small" onClick={retryLoading} type="button">Try again</button>
           </div>
         ) : loading ? (
-          <div aria-label="Loading recent items" className="empty-state" role="status">
-            <p>Loading recent community reports…</p>
+          <div aria-label="Loading recent items" role="status">
+            <span className="sr-only">Loading recent items…</span>
+            <SkeletonEntries count={3} variant="tile" />
           </div>
         ) : recentItems.length ? (
-          <div className="items-grid">
+          <div className="tile-grid">
             {recentItems.map((item) => <ItemCard item={item} key={item.id} onSelect={setSelectedItem} />)}
           </div>
         ) : (
-          <div className="empty-state"><p>No approved found items yet.</p></div>
+          <div className="notice">
+            <span className="notice-glyph"><Icon name="inbox" /></span>
+            <h3>The register is empty</h3>
+            <p>No approved found items yet.</p>
+            <p>Reports appear here once an administrator has reviewed them.</p>
+          </div>
         )}
       </section>
 

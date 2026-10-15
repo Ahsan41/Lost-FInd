@@ -24,16 +24,16 @@ export function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   return (
     <Modal onClose={onCancel} title={title}>
-      <div className="admin-confirm-content">
-        <span className={`admin-confirm-icon${danger ? " admin-confirm-icon-danger" : ""}`}>
-          <Icon name={danger ? "info" : "check-circle"} />
+      <div className="confirm">
+        <span className={`confirm-glyph${danger ? " confirm-glyph-danger" : ""}`}>
+          <Icon name={danger ? "info" : "check"} />
         </span>
-        <h2 className="admin-modal-title">{title}</h2>
-        <p className="admin-modal-description">{description}</p>
-        <div className="admin-modal-actions">
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <div className="modal-actions">
           <button className="button button-secondary" disabled={pending} onClick={onCancel} type="button">Cancel</button>
           <button aria-busy={pending} className={`button ${danger ? "button-danger" : "button-primary"}`} disabled={pending} onClick={onConfirm} type="button">
-            {pending ? "Saving…" : confirmLabel}
+            {pending ? <><span className="loading-indicator" />Saving…</> : confirmLabel}
           </button>
         </div>
       </div>
