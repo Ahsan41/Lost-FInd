@@ -1,7 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
 
 export type IconName =
-  | "logo"
   | "search"
   | "arrow-right"
   | "arrow-left"
@@ -55,8 +54,6 @@ export function Icon({ name, ...props }: IconProps) {
   };
 
   const shapes: Record<IconName, ReactNode> = {
-    // The brand mark is a property tag: the label tied to every item at a lost-property desk.
-    logo: <><path d="M3.5 4.5h7.3l9.7 9.7-7.3 7.3-9.7-9.7V4.5Z" /><circle cx="7.6" cy="8.6" r="1.4" /></>,
     search: <><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.2 4.2" /></>,
     "arrow-right": <><path d="M4.5 12h15" /><path d="m13 5.5 6.5 6.5-6.5 6.5" /></>,
     "arrow-left": <><path d="M19.5 12h-15" /><path d="m11 5.5-6.5 6.5 6.5 6.5" /></>,

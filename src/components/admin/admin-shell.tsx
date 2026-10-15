@@ -25,7 +25,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <header className="desk-topbar">
         <div className="desk-container desk-topbar-inner">
           <Link aria-label="LostNFind admin overview" className="brand" href="/admin">
-            <span className="brand-mark"><Icon name="logo" /></span>
             <span className="brand-name">LostNFind</span>
             <span className="desk-badge">Admin</span>
           </Link>

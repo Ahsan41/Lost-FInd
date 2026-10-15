@@ -48,7 +48,7 @@
 }
 
 .desk-topbar .brand-name {
-  font-size: 1.125rem;
+  font-size: 1.35rem;
 }
 
 .desk-badge {
@@ -393,8 +393,8 @@
 
 .stat-value {
   font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-weight: var(--weight-medium);
+  font-size: 3rem;
+  font-weight: var(--weight-display);
   line-height: 1;
   color: var(--ink);
 }
@@ -455,7 +455,7 @@
 }
 
 .panel-head h3 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
 }
 
 .panel-head p {
@@ -609,7 +609,7 @@
 }
 
 .panel-empty h3 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
 }
 
 .panel-empty p {
@@ -718,7 +718,7 @@
 }
 
 .record-head h2 {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   overflow-wrap: anywhere;
 }
 
@@ -867,7 +867,7 @@
 }
 
 .confirm h2 {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   padding-right: 36px;
 }
 

@@ -116,6 +116,7 @@ export function HomeExperience() {
 
       <section aria-label="How the register works" className="page-container paths">
         <div className="path path-lost">
+          <span aria-hidden="true" className="path-index">I.</span>
           <p className="kicker">If you lost something</p>
           <h2>Search first, then claim.</h2>
           <ol className="path-steps">
@@ -126,6 +127,7 @@ export function HomeExperience() {
           <Link className="button button-secondary" href="/found-items">Browse found items <Icon name="arrow-right" /></Link>
         </div>
         <div className="path path-found">
+          <span aria-hidden="true" className="path-index">II.</span>
           <p className="kicker kicker-accent">If you found something</p>
           <h2>Log it and keep it safe.</h2>
           <ol className="path-steps">
@@ -183,8 +185,17 @@ export function HomeExperience() {
             <SkeletonEntries count={3} variant="tile" />
           </div>
         ) : recentItems.length ? (
-          <div className="tile-grid">
-            {recentItems.map((item) => <ItemCard item={item} key={item.id} onSelect={setSelectedItem} />)}
+          <div className="latest">
+            <div className="latest-lead">
+              <ItemCard item={recentItems[0]} onSelect={setSelectedItem} />
+            </div>
+            {recentItems.length > 1 && (
+              <div className="latest-side">
+                {recentItems.slice(1).map((item) => (
+                  <ItemCard item={item} key={item.id} onSelect={setSelectedItem} variant="row" />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="notice">

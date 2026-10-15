@@ -1,29 +1,27 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Figtree, Instrument_Serif, Spline_Sans_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import AppShell from "@/components/app-shell";
 import "./globals.css";
 
-const fraunces = Fraunces({
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
+  weight: "400",
   style: ["normal", "italic"],
-  axes: ["opsz"],
   display: "swap",
-  variable: "--font-fraunces",
+  variable: "--font-instrument-serif",
 });
 
-const plexSans = IBM_Plex_Sans({
+const figtree = Figtree({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
   display: "swap",
-  variable: "--font-plex-sans",
+  variable: "--font-figtree",
 });
 
-const plexMono = IBM_Plex_Mono({
+const splineSansMono = Spline_Sans_Mono({
   subsets: ["latin"],
-  weight: ["400", "500"],
   display: "swap",
-  variable: "--font-plex-mono",
+  variable: "--font-spline-sans-mono",
 });
 
 export const metadata: Metadata = {
@@ -34,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`} lang="en">
+    <html className={`${instrumentSerif.variable} ${figtree.variable} ${splineSansMono.variable}`} lang="en">
       <body>
         <AppShell>{children}</AppShell>
       </body>

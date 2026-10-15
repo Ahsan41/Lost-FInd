@@ -28,11 +28,7 @@ export function SiteHeader({ onReport }: SiteHeaderProps) {
       <div className="page-container">
         <div className="site-header-inner">
           <Link aria-label="LostNFind home" className="brand" href="/">
-            <span className="brand-mark"><Icon name="logo" /></span>
-            <span className="brand-text">
-              <span className="brand-name">LostNFind</span>
-              <span className="brand-descriptor">Found-property register</span>
-            </span>
+            <span className="brand-name">LostNFind</span>
           </Link>
           <nav aria-label="Main navigation" className="site-nav">
             {links.map(({ href, label }) => (

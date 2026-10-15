@@ -2,15 +2,16 @@
  * LostNFind design tokens: type.
  *
  * Three families, each with one job:
- *   display  Fraunces          headings and item names
- *   body     IBM Plex Sans     everything you read
- *   mono     IBM Plex Mono     dates, counts, labels and reference text
- * The next/font variables (--font-fraunces etc.) are set on <html> in layout.tsx.
+ *   display  Instrument Serif   headings and item names (single 400 weight, so
+ *                               display sizes run a step larger and are never faux-bolded)
+ *   body     Figtree            everything you read
+ *   mono     Spline Sans Mono   dates, counts, labels and reference text
+ * The next/font variables (--font-instrument-serif etc.) are set on <html> in layout.tsx.
  */
 :root {
-  --font-display: var(--font-fraunces), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-body: var(--font-plex-sans), "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-plex-mono), "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-display: var(--font-instrument-serif), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: var(--font-figtree), "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-spline-sans-mono), "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
   --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
@@ -19,11 +20,13 @@
   --text-md: 1.0625rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
-  --text-2xl: 1.875rem;
-  --text-3xl: 2.375rem;
-  --text-4xl: 3rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.625rem;
+  --text-4xl: 3.25rem;
 
   --weight-regular: 400;
+  --weight-display: 400;
+  --weight-display: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
 
@@ -32,5 +35,5 @@
   --leading-normal: 1.55;
 
   --tracking-caps: 0.09em;
-  --tracking-display: -0.015em;
+  --tracking-display: 0;
 }
